@@ -1,0 +1,26 @@
+{
+  "name": "deployjs",
+  "version": "1.0.0",
+  "description": "nodejs CLI to handle deployment, npm install and watch the PID of current process. Handles error and restart",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jpbeaudet/deployjs"
+  },
+  "keywords": [
+    "deployment",
+    "pid"
+  ],
+  "authors": "Jean-Philippe Beaudet <jpbeaudet@s3r3nity.com> ",
+  "license": "GNU 3.0",
+  "dependencies": {
+    "commander": "",
+    "ps-node":"",
+    "path":"",
+    "jsonfile": ""
+  }
+}
+
