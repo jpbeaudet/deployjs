@@ -30,7 +30,7 @@ var ps = require('ps-node');
 var path = require('path'); 
 var jsonfile = require('jsonfile')
 var process = require('process');
-var rimraf = require('rimraf');
+
 // globals
 /////////////////////////////////////////////////////////////////
 var CONFIG = null
@@ -49,6 +49,23 @@ function MyError(message) {
 }
 MyError.prototype = Object.create(Error.prototype);
 MyError.prototype.constructor = MyError;
+
+function deleteFolderRecursive(path, cb) {
+	console.log(path)
+	if( fs.existsSync(path) ) {
+		fs.readdirSync(path).forEach(function(file,index){
+			console.log(path + "/" + file)
+		var curPath = path + "/" + file;
+		if(fs.lstatSync(curPath).isDirectory()) { // recurse
+			deleteFolderRecursive(curPath);
+		} else { // delete file
+			fs.unlinkSync(curPath);
+		}
+		});
+		fs.rmdirSync(path);
+	}
+	return cb()
+};
 
 function collect(val, memo) {
 	memo.push(val);
@@ -77,8 +94,6 @@ function getCommand(cmd){
 		}
 	this.command = s[0]
 	this.args =  args
-	
-	
 }
 // execute a makefile in the chosen cwd before spawning the process anew
 function make(makefile, cwd, cb){
@@ -98,20 +113,19 @@ function make(makefile, cwd, cb){
 
 // execute a makefile in the chosen cwd before spawning the process anew
 function install(dependencies, cwd,  cb){console.log( ' INSTALL TRIGGERED:');
-	changeDirectory( path.join(__dirname, cwd))
+	//changeDirectory( path.join(__dirname, cwd))
 	const  exec  = require('child_process').exec;
-	
-	rimraf(path.join(__dirname, cwd, dependencies), function () { 
-		console.log('rimraf done for: '+path.join(__dirname, cwd, dependencies)); 
+	deleteFolderRecursive(path.join(__dirname, cwd, dependencies), function () { 
+		console.log('rm -rf done for: '+path.join(__dirname, cwd, dependencies)); 
+		exec("npm install", function(err, stdout, stderr){
+			if (err) {
+				console.error(err);
+				return cb(err);
+			}
+			console.log(' INSTALL stdout:'+stdout);
+			return cb(null)
+		})
 	});
-	exec("npm install", function(err, stdout, stderr){
-		if (err) {
-			console.error(err);
-			return cb(err);
-		}
-		console.log(' INSTALL stdout:'+stdout);
-		return cb(null)
-	})
 };
 
 // boostrap a failed process, re-install if called so and restart
@@ -233,7 +247,6 @@ try {
 	});
 
 	cmd.on('close', (code) => {
- 		
 		obj.process[id].pid = null
 		obj.process[id].status = false
 		jsonfile.writeFile(RECOVERY, obj, function (err) {
@@ -393,10 +406,10 @@ program
 								start(exec.command, exec.args, i, obj, obj.process[i].cwd)
 						}
 					}
-	});
-}
-})
-})
+				});
+			}
+		})
+	})
 	
 // node setup start -v
 program

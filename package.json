@@ -20,7 +20,6 @@
     "commander": "",
     "jsonfile": "",
     "path": "",
-    "ps-node": "",
-    "rimraf": "^2.6.1"
+    "ps-node": ""
   }
 }
