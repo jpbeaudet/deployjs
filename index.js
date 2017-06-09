@@ -106,14 +106,76 @@ try {
 		throw new MyError("process constructor has failed");
 }
 }
-// listen to process
-function start(command, args, id){
+// boostrap a failed process, re-install if called so and restart
+function boostrap(id){
+	fs.stat(RECOVERY, function(err, stat) {
+		if(err == null) {
+			jsonfile.readFile(RECOVERY, function(err, obj) {
+				if (obj != null){
+					console.log( ' COMMAND: %s', obj.process[id].cmd);
+					var cmd = obj.process[id].cmd
+					var reinstall = obj.process[id].reinstall
+					var makefile = obj.process[id].makefile
+					var dependencies = obj.process[id].dependencies
+				}
+				
+			})
+			
+		}else{
+			throw new MyError("process file is not valid, please run setup or config ");
+		}
+})
+}
+
+//lookup to pid and return a boolean
+function lookup(pid){
+		ps.lookup({ pid: pid}, function(err, resultList ) {
+		if (err) {
+			throw new Error( err );
+		}
+		var process = resultList[ 0 ];
+		if( process ){
+			console.log( 'PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
+			return true
+		}
+		else {
+			console.log( 'No such process found!' );
+			return false
+		}
+});
+}
+// listen to process from pid
+function listen(pid, id){
+try {
+//while(true){
+setTimeout(function(){ 
+	if(lookup(pid) == false){
+		bootstrap(id)
+	}
+	}, 1000);
+//}
+}catch(err) {
+	throw new MyError(" listen() has failed for pis "+pid);
+}
+}
+
+// start to process and record pid
+function start(command, args, id, obj){
+try {
 	const spawn = require('child_process').spawn;
 	console.log(" start cmd: "+ '("'+command+'",'+args+')')
 	const cmd = spawn(command, args);
 	cmd.stdout.on('data', (data) => {
 		console.log(" process for "+cmd+" is PID: "+cmd.pid)
-		console.log(`stdout: ${data}`);
+		obj.process[id].pid = cmd.pid
+		obj.process[id].status = true
+		jsonfile.writeFile(RECOVERY, obj, function (err) {
+			if(err){
+				throw new MyError(err.message);
+			}
+			listen(cmd.pid, id)
+			console.log(`stdout: ${data}`);
+		})
 	});
 
 	cmd.stderr.on('data', (data) => {
@@ -121,8 +183,20 @@ function start(command, args, id){
 	});
 
 	cmd.on('close', (code) => {
- 		 console.log(`child process exited with code ${code}`);
+ 		
+		obj.process[id].pid = null
+		obj.process[id].status = false
+		jsonfile.writeFile(RECOVERY, obj, function (err) {
+			if(err){
+				throw new MyError(err.message);
+			}
+			//listen(cmd.pid)
+			console.log(`child process exited with code ${code}`);
+		})
 	});
+}catch(err) {
+	throw new MyError("start command has failed for "+'("'+command+'",'+args+')');
+}
 }
 // program start
 /////////////////////////////////////////////////////////////////
@@ -229,7 +303,7 @@ program
 							}
 							console.log("obj command: "+JSON.stringify(command))
 							console.log("obj args: "+JSON.stringify(args))
-							start(command, args, i)
+							start(command, args, i, obj)
 						}
 					}
 	});
