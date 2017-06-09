@@ -15,12 +15,12 @@
     "pid"
   ],
   "authors": "Jean-Philippe Beaudet <jpbeaudet@s3r3nity.com> ",
-  "license": "GNU 3.0",
+  "license": "GPL-3.0",
   "dependencies": {
     "commander": "",
-    "ps-node": "",
-    "path": "",
     "jsonfile": "",
-    "rimraf":""
+    "path": "",
+    "ps-node": "",
+    "rimraf": "^2.6.1"
   }
 }

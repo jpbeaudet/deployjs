@@ -19,7 +19,7 @@ var Config = {
 			status: false,
 			makefile: null,
 			reinstall : true,
-			dependencies: ["node_modules"],
+			dependencies: "node_modules",
 			cwd: "/deployjs"
 		}
 	]

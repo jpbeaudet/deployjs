@@ -100,6 +100,7 @@ function make(makefile, cwd, cb){
 function install(dependencies, cwd,  cb){console.log( ' INSTALL TRIGGERED:');
 	changeDirectory( path.join(__dirname, cwd))
 	const  exec  = require('child_process').exec;
+	
 	rimraf(path.join(__dirname, cwd, dependencies), function () { 
 		console.log('rimraf done for: '+path.join(__dirname, cwd, dependencies)); 
 	});
@@ -128,27 +129,24 @@ try {
 					var dependencies = obj.process[id].dependencies
 					var cwd = obj.process[id].cwd
 					if (reinstall){
-						
 						if (makefile != null){
 							console.log( ' MAKEFILE TRIGGERED: %s', id);
 							make(makefile, cwd, function(err){
 								if (err){
 									console.log(err)
 								}
-							var exec = new getCommand(cmd)
-							start(exec.command, exec.args, id, obj, cwd)
 							})
 						}
-						if(dependencies != []){
+						if(dependencies != null){
 							console.log( ' REINSTALL TRIGGERED: %s', id);
 							install(dependencies, cwd, function(err){
 								if (err){
 									console.log(err)
 								}
-							var exec = new getCommand(cmd)
-							start(exec.command, exec.args, id, obj, cwd)
 							})
 						}
+						var exec = new getCommand(cmd)
+							start(exec.command, exec.args, id, obj, cwd)
 					}else{
 						var exec = new getCommand(cmd)
 							start(exec.command, exec.args, id, obj, cwd)
@@ -267,7 +265,6 @@ try {
 	this.cwd =  program.chdir || "/"
 	this.pid = null
 	this.status = false
-	this.dependencies =[]
 	if(options.makefile){
 		fs.stat(options.makefile, function(err, stat) {
 			if(err == null) {
@@ -277,17 +274,17 @@ try {
 			}
 		}); 
 		
-	}else{
-		for (var i = 0; i < options.dependencies.length; i++) { 
-			fs.stat(options.dependencies[i], function(err, stat) {
-				if(err == null) {
-					this.dependencies.push( options.dependencies[i])
-				}else{
-					throw new MyError("dependencies path is not valid path: "+options.dependencies[i]);
-				}
-			}); 
-		}
-		if (options.dependencies.length ==0 && options.makefile == false){
+	}
+	if(options.dependencies){
+		fs.stat(options.dependencies, function(err, stat) {
+			if(err == null) {
+				this.dependencies = options.dependencies
+			}else{
+				throw new MyError("dependencies path is not valid path: "+options.dependencies);
+			}
+		}); 
+		
+		if (options.dependencies ==null && options.makefile == false){
 			this.dependencies.push('node_modules')
 		}
 	}
@@ -316,9 +313,9 @@ program
 	.description('add a new process to be watched')
 	.option('-C, --chdir <path>', 'change the working directory', "/")
 	.option('-c, --cmd [String]', 'Array of command and args', null)
-	.option('-d, --dependencies [Array]', 'Array dependencies files', collect, [])
+	.option('-d, --dependencies [String]', 'Array dependencies files', null)
 	.option('-r, --reinstall [mode]', 'Set to re-install dependencies ', false)
-	.option("-m, --makefile [mode]", "use a makefile for dependencies", false)
+	.option("-m, --makefile [path]", "path to a makefile to install dependencies", null)
 	.action(function(options){
 		fs.stat(RECOVERY, function(err, stat) {
 			if(err == null) {
@@ -347,10 +344,6 @@ program
 	.description('use a config file for the deployment')
 	.option('-p, --path [String]', 'path to use a config file, default to '+path.join(__dirname,"/config.json"))
 	.action(function(options){
-		//if (options.dependencies.length > 0 || options.cmd.length > 0 ){
-			//throw new MyError("cannot use config with other options");
-		//}
-		//console.log('config command with options:'+  unCircularize(options));
 		console.log('config command with options.path:'+  options.path);
 		var config_path= path.join( __dirname,"/config.js")
 		if(options && options.path){
