@@ -106,8 +106,23 @@ try {
 		throw new MyError("process constructor has failed");
 }
 }
+function getCommand(cmd){
+	var c = cmd
+	console.log("obj recovered is: "+JSON.stringify(c)) 
+	var s = c.split(" ")
+	var args =[]
+	console.log("obj plit s: "+JSON.stringify(s))
+	for (var x = 1; x < s.length; x++) {
+		args.push(s[x])
+		}
+	this.command = s[0]
+	this.args =  args
+	
+	
+}
 // boostrap a failed process, re-install if called so and restart
-function boostrap(id){
+function bootstrap(id){
+	console.log( ' BOOTSTRAP TRIGGERED: %s', id);
 	fs.stat(RECOVERY, function(err, stat) {
 		if(err == null) {
 			jsonfile.readFile(RECOVERY, function(err, obj) {
@@ -117,18 +132,34 @@ function boostrap(id){
 					var reinstall = obj.process[id].reinstall
 					var makefile = obj.process[id].makefile
 					var dependencies = obj.process[id].dependencies
+					if (reinstall){
+						console.log( ' REINSTALL TRIGGERED: %s', id);
+						if (makefile != null){
+							console.log( ' MAKEFILE TRIGGERED: %s', id);
+							//return make(id)
+						}
+						if(dependencies != []){
+							console.log( ' INSTALL TRIGGERED: %s', id);
+							//return install(id)
+						}
+					}else{
+						var exec = new getCommand(cmd)
+							start(exec.command, exec.args, id, obj)
+					}
+					
+				}else{
+					throw new MyError("you must run config or setup befor starting, or bootstraping commands ");
 				}
-				
 			})
 			
 		}else{
-			throw new MyError("process file is not valid, please run setup or config ");
+			throw new MyError("recovery file path is invalid ");
 		}
 })
 }
 
 //lookup to pid and return a boolean
-function lookup(pid){
+function lookup(pid, id){
 		ps.lookup({ pid: pid}, function(err, resultList ) {
 		if (err) {
 			throw new Error( err );
@@ -140,7 +171,7 @@ function lookup(pid){
 		}
 		else {
 			console.log( 'No such process found!' );
-			return false
+			return bootstrap(id)
 		}
 });
 }
@@ -149,9 +180,10 @@ function listen(pid, id){
 try {
 //while(true){
 setTimeout(function(){ 
-	if(lookup(pid) == false){
-		bootstrap(id)
-	}
+	//if(lookup(pid) == false){
+		//bootstrap(id)
+	//}
+	lookup(pid, id)
 	}, 1000);
 //}
 }catch(err) {
@@ -292,18 +324,8 @@ program
 					if (obj != null){
 						const  cmd =[]
 						for (var i = 0; i < obj.process.length; i++) {
-							var c = obj.process[i].cmd
-							console.log("obj recovered is: "+JSON.stringify(c)) 
-							var s = c.split(" ")
-							var command = s[0]
-							var args =[]
-							console.log("obj plit s: "+JSON.stringify(s))
-							for (var x = 1; x < s.length; x++) {
-								args.push(s[x])
-							}
-							console.log("obj command: "+JSON.stringify(command))
-							console.log("obj args: "+JSON.stringify(args))
-							start(command, args, i, obj)
+							var exec = new getCommand(obj.process[i].cmd)
+								start(exec.command, exec.args, i, obj)
 						}
 					}
 	});
