@@ -8,6 +8,18 @@
 // Example of single manual use:
 //
 //========================================================
+// spawn observer
+(function() {
+	var childProcess = require("child_process");
+	var oldSpawn = childProcess.spawn;
+	function mySpawn() {
+		console.log('spawn called');
+		console.log(arguments);
+		var result = oldSpawn.apply(this, arguments);
+		return result;
+	}
+	childProcess.spawn = mySpawn;
+})();
 
 // dependencies
 //////////////////////////////////////////////////////////////////
@@ -17,8 +29,8 @@ var fs = require('fs')
 var ps = require('ps-node');
 var path = require('path'); 
 var jsonfile = require('jsonfile')
-
-
+var process = require('process');
+var rimraf = require('rimraf');
 // globals
 /////////////////////////////////////////////////////////////////
 var CONFIG = null
@@ -26,8 +38,18 @@ var PROC = {}
 var RECOVERY = path.join(__dirname, "/bin/recovery.js")
 var _DIR = __dirname
 
-// helpers
+// helpers section
 /////////////////////////////////////////////////////////////////
+
+// Create a new object, that prototypically inherits from the Error constructor
+function MyError(message) {
+  this.name = 'MyError';
+  this.message = message || 'Default Message';
+  this.stack = (new Error()).stack;
+}
+MyError.prototype = Object.create(Error.prototype);
+MyError.prototype.constructor = MyError;
+
 function collect(val, memo) {
 	memo.push(val);
 	return memo;
@@ -45,73 +67,11 @@ function unCircularize(o) {
 });
 return ret
 }
-// Create a new object, that prototypically inherits from the Error constructor
-function MyError(message) {
-  this.name = 'MyError';
-  this.message = message || 'Default Message';
-  this.stack = (new Error()).stack;
-}
-MyError.prototype = Object.create(Error.prototype);
-MyError.prototype.constructor = MyError;
 
-//deploy object constructor and prototypes
-/////////////////////////////////////////////////////////////////
-function deploy(program){
-try {
-	this.verbose = program.verbose
-	this.process = program.process || []
-}catch(err) {
-	throw new MyError("deploy constructor has failed");
-}
-}
-deploy.prototype.add = function(options){
-	return new watcher(options)
-}
-function watcher(options){
-try {
-	this.dir = program.chdir
-	this.pid = null
-	this.status = false
-	this.dependencies =[]
-	if(options.makefile){
-		fs.stat(options.makefile, function(err, stat) {
-			if(err == null) {
-				this.makefile = options.makefile
-			}else{
-				throw new MyError("makeFile path is not valid makefile: "+options.makefile);
-			}
-		}); 
-		
-	}else{
-		for (var i = 0; i < options.dependencies.length; i++) { 
-			fs.stat(options.dependencies[i], function(err, stat) {
-				if(err == null) {
-					this.dependencies.push( options.dependencies[i])
-				}else{
-					throw new MyError("dependencies path is not valid path: "+options.dependencies[i]);
-				}
-			}); 
-		}
-		if (options.dependencies.length ==0 && options.makefile == false){
-			this.dependencies.push('node_modules')
-		}
-	}
-	this.reinstall = options.reinstall
-	if(options.cmd){
-		this.cmd = options.cmd
-	}else{
-		throw new MyError("must have at least 1 command ti run");
-	}
-}catch(err) {
-		throw new MyError("process constructor has failed");
-}
-}
 function getCommand(cmd){
 	var c = cmd
-	console.log("obj recovered is: "+JSON.stringify(c)) 
 	var s = c.split(" ")
 	var args =[]
-	console.log("obj plit s: "+JSON.stringify(s))
 	for (var x = 1; x < s.length; x++) {
 		args.push(s[x])
 		}
@@ -120,31 +80,78 @@ function getCommand(cmd){
 	
 	
 }
+// execute a makefile in the chosen cwd before spawning the process anew
+function make(makefile, cwd, cb){
+	changeDirectory( path.join(__dirname, cwd))
+	console.log('MAKEFILE TRIGGERED:');
+	const  exec  = require('child_process').exec;
+	exec(makefile, function(err, stdout, stderr){
+		if (err) {
+			console.error(err);
+			return cb(err);
+		}
+		console.log(' MAKEFILE stdout:'+stdout);
+		return cb(null)
+	})
+	
+};
+
+// execute a makefile in the chosen cwd before spawning the process anew
+function install(dependencies, cwd,  cb){console.log( ' INSTALL TRIGGERED:');
+	changeDirectory( path.join(__dirname, cwd))
+	const  exec  = require('child_process').exec;
+	rimraf(path.join(__dirname, cwd, dependencies), function () { 
+		console.log('rimraf done for: '+path.join(__dirname, cwd, dependencies)); 
+	});
+	exec("npm install", function(err, stdout, stderr){
+		if (err) {
+			console.error(err);
+			return cb(err);
+		}
+		console.log(' INSTALL stdout:'+stdout);
+		return cb(null)
+	})
+};
+
 // boostrap a failed process, re-install if called so and restart
 function bootstrap(id){
+try {
 	console.log( ' BOOTSTRAP TRIGGERED: %s', id);
 	fs.stat(RECOVERY, function(err, stat) {
 		if(err == null) {
 			jsonfile.readFile(RECOVERY, function(err, obj) {
 				if (obj != null){
-					console.log( ' COMMAND: %s', obj.process[id].cmd);
+					//console.log( ' COMMAND: %s', obj.process[id].cmd);
 					var cmd = obj.process[id].cmd
 					var reinstall = obj.process[id].reinstall
 					var makefile = obj.process[id].makefile
 					var dependencies = obj.process[id].dependencies
+					var cwd = obj.process[id].cwd
 					if (reinstall){
-						console.log( ' REINSTALL TRIGGERED: %s', id);
+						
 						if (makefile != null){
 							console.log( ' MAKEFILE TRIGGERED: %s', id);
-							//return make(id)
+							make(makefile, cwd, function(err){
+								if (err){
+									console.log(err)
+								}
+							var exec = new getCommand(cmd)
+							start(exec.command, exec.args, id, obj, cwd)
+							})
 						}
 						if(dependencies != []){
-							console.log( ' INSTALL TRIGGERED: %s', id);
-							//return install(id)
+							console.log( ' REINSTALL TRIGGERED: %s', id);
+							install(dependencies, cwd, function(err){
+								if (err){
+									console.log(err)
+								}
+							var exec = new getCommand(cmd)
+							start(exec.command, exec.args, id, obj, cwd)
+							})
 						}
 					}else{
 						var exec = new getCommand(cmd)
-							start(exec.command, exec.args, id, obj)
+							start(exec.command, exec.args, id, obj, cwd)
 					}
 					
 				}else{
@@ -156,6 +163,9 @@ function bootstrap(id){
 			throw new MyError("recovery file path is invalid ");
 		}
 })
+}catch (err) {
+	console.log('chdir: ' + err);
+}
 }
 
 //lookup to pid and return a boolean
@@ -170,7 +180,7 @@ function lookup(pid, id){
 			return true
 		}
 		else {
-			console.log( 'No such process found!' );
+			console.log( 'No such process found! PID: '+pid);
 			return bootstrap(id)
 		}
 });
@@ -178,22 +188,32 @@ function lookup(pid, id){
 // listen to process from pid
 function listen(pid, id){
 try {
-//while(true){
-setTimeout(function(){ 
-	//if(lookup(pid) == false){
-		//bootstrap(id)
-	//}
-	lookup(pid, id)
+	setTimeout(function(){ 
+		lookup(pid, id)
 	}, 1000);
-//}
+
 }catch(err) {
-	throw new MyError(" listen() has failed for pis "+pid);
+	throw new MyError(" listen() has failed for PID: "+pid);
+}
+}
+
+// change directory to spwan new process
+function changeDirectory(cwd){
+	console.log('Starting directory: ' + process.cwd());
+try {
+	process.chdir(cwd);
+	console.log('New directory: ' + process.cwd());
+}
+catch (err) {
+	console.log('chdir: ' + err);
 }
 }
 
 // start to process and record pid
-function start(command, args, id, obj){
+function start(command, args, id, obj,cwd){
+
 try {
+	changeDirectory( path.join(__dirname, cwd))
 	const spawn = require('child_process').spawn;
 	console.log(" start cmd: "+ '("'+command+'",'+args+')')
 	const cmd = spawn(command, args);
@@ -230,7 +250,59 @@ try {
 	throw new MyError("start command has failed for "+'("'+command+'",'+args+')');
 }
 }
-// program start
+
+//constructor sections
+/////////////////////////////////////////////////////////////////
+function deploy(program){
+try {
+	this.verbose = program.verbose
+	this.process = program.process || []
+}catch(err) {
+	throw new MyError("deploy constructor has failed");
+}
+}
+
+function watcher(options){
+try {
+	this.cwd =  program.chdir || "/"
+	this.pid = null
+	this.status = false
+	this.dependencies =[]
+	if(options.makefile){
+		fs.stat(options.makefile, function(err, stat) {
+			if(err == null) {
+				this.makefile = options.makefile
+			}else{
+				throw new MyError("makeFile path is not valid makefile: "+options.makefile);
+			}
+		}); 
+		
+	}else{
+		for (var i = 0; i < options.dependencies.length; i++) { 
+			fs.stat(options.dependencies[i], function(err, stat) {
+				if(err == null) {
+					this.dependencies.push( options.dependencies[i])
+				}else{
+					throw new MyError("dependencies path is not valid path: "+options.dependencies[i]);
+				}
+			}); 
+		}
+		if (options.dependencies.length ==0 && options.makefile == false){
+			this.dependencies.push('node_modules')
+		}
+	}
+	this.reinstall = options.reinstall
+	if(options.cmd){
+		this.cmd = options.cmd
+	}else{
+		throw new MyError("must have at least 1 command ti run");
+	}
+}catch(err) {
+		throw new MyError("process constructor has failed");
+}
+}
+
+// command-line options section
 /////////////////////////////////////////////////////////////////
 program
 	.version('0.0.1')
@@ -242,7 +314,7 @@ program
 program
 	.command('add')
 	.description('add a new process to be watched')
-	.option('-C, --chdir <path>', 'change the working directory', __dirname)
+	.option('-C, --chdir <path>', 'change the working directory', "/")
 	.option('-c, --cmd [String]', 'Array of command and args', null)
 	.option('-d, --dependencies [Array]', 'Array dependencies files', collect, [])
 	.option('-r, --reinstall [mode]', 'Set to re-install dependencies ', false)
@@ -325,7 +397,7 @@ program
 						const  cmd =[]
 						for (var i = 0; i < obj.process.length; i++) {
 							var exec = new getCommand(obj.process[i].cmd)
-								start(exec.command, exec.args, i, obj)
+								start(exec.command, exec.args, i, obj, obj.process[i].cwd)
 						}
 					}
 	});
@@ -359,30 +431,3 @@ program
 	
 	// parse the args
 	program.parse(process.argv);
-	
-	// view options state
-	if (program.verbose){
-		console.log('--verbose is activated')
-		console.log('--cmd: '+program.cmd)
-		console.log('--chdir: '+program.chdir)
-		console.log('--dependencies: '+program.dependencies)
-		console.log('--reinstall: '+program.reinstall)
-	}
-	
-	// Start the program
-	// 1. setup deploy object- catch cmd and args, working directory and dependencies/makefile files
-
-	// save the last PROC object to file for recovery
-	
-	// 2. start the commands list and store their pid in a txt file
-	
-	// 3. setup a lookup on the current pids , setup chmod permission for deploys
-	
-	// 4. on err, crash ect.. 
-	
-		// >> stop, kill current pid
-		// >> rm -rf all dependencies
-		// >> if makefile>> use makefile
-		// >> if dependencies >> npm install 
-		
-		// then restart the list of commands, and store the new pid, setup new lookup
