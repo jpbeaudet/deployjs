@@ -1,6 +1,6 @@
 {
   "name": "deployjs",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "nodejs CLI to handle deployment, npm install and watch the PID of current process. Handles error and restart",
   "main": "index.js",
   "scripts": {
@@ -18,9 +18,8 @@
   "license": "GNU 3.0",
   "dependencies": {
     "commander": "",
-    "ps-node":"",
-    "path":"",
+    "ps-node": "",
+    "path": "",
     "jsonfile": ""
   }
 }
-

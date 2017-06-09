@@ -18,15 +18,32 @@ var ps = require('ps-node');
 var path = require('path'); 
 var jsonfile = require('jsonfile')
 
+
 // globals
 /////////////////////////////////////////////////////////////////
 var CONFIG = null
 var PROC = {}
-var RECOVERY = "./recovery.json"
+var RECOVERY = path.join(__dirname, "/bin/recovery.js")
+var _DIR = __dirname
+
 // helpers
+/////////////////////////////////////////////////////////////////
 function collect(val, memo) {
 	memo.push(val);
 	return memo;
+}
+function unCircularize(o) {
+	seen = [];
+	var ret = JSON.stringify(o, function(key, val) {
+	if (val != null && typeof val == "object") {
+		if (seen.indexOf(val) >= 0) {
+			return;
+		}
+		seen.push(val);
+	}
+	return val;
+});
+return ret
 }
 // Create a new object, that prototypically inherits from the Error constructor
 function MyError(message) {
@@ -40,56 +57,72 @@ MyError.prototype.constructor = MyError;
 //deploy object constructor and prototypes
 /////////////////////////////////////////////////////////////////
 function deploy(program){
-	try {
-	this.dir = program.chdir
-
-	if(program.cmd.length >0){
-		this.cmd = program.cmd
-	}else{
-		throw new MyError("must have at least 1 command ti run");
-	}
-	this.process = []
-	}
-	catch(err) {
-		throw new MyError(err.message);
-	}
+try {
+	this.verbose = program.verbose
+	this.process = program.process || []
+}catch(err) {
+	throw new MyError("deploy constructor has failed");
 }
-function watcher(process){
-	this.pid = process.pid
+}
+deploy.prototype.add = function(options){
+	return new watcher(options)
+}
+function watcher(options){
+try {
+	this.dir = program.chdir
+	this.pid = null
 	this.status = false
-	if(program.makefile){
-		path.exists(program.makefile, function(exists) { 
-			if (exists) { 
-				this.dependencies = program.makefile
+	this.dependencies =[]
+	if(options.makefile){
+		fs.stat(options.makefile, function(err, stat) {
+			if(err == null) {
+				this.makefile = options.makefile
 			}else{
-				throw new MyError("makeFile path is not valid makefile: "+program.makefile);
+				throw new MyError("makeFile path is not valid makefile: "+options.makefile);
 			}
 		}); 
 		
 	}else{
-		for (var i = 0; i < program.dependencies.length; i++) { 
-			path.exists( program.dependencies[i], function(exists) { 
-				if (exists) { 
-					this.dependencies.push( program.dependencies[i])
+		for (var i = 0; i < options.dependencies.length; i++) { 
+			fs.stat(options.dependencies[i], function(err, stat) {
+				if(err == null) {
+					this.dependencies.push( options.dependencies[i])
 				}else{
-					throw new MyError("dependencies path is not valid path: "+program.dependencies[i]);
+					throw new MyError("dependencies path is not valid path: "+options.dependencies[i]);
 				}
 			}); 
 		}
-		if (program.dependencies.length ==0){
+		if (options.dependencies.length ==0 && options.makefile == false){
 			this.dependencies.push('node_modules')
 		}
 	}
-	this.reinstall = program.reinstall
+	this.reinstall = options.reinstall
+	if(options.cmd){
+		this.cmd = options.cmd
+	}else{
+		throw new MyError("must have at least 1 command ti run");
+	}
+}catch(err) {
+		throw new MyError("process constructor has failed");
 }
-watcher.prototype.listen(){
-	// startb the process lookup
 }
-watcher.prototype.make(){
-	// re-install process dependencies
-}
-watcher.prototype.restart(){
-	// kill , re-install and start the process anew
+// listen to process
+function start(command, args, id){
+	const spawn = require('child_process').spawn;
+	console.log(" start cmd: "+ '("'+command+'",'+args+')')
+	const cmd = spawn(command, args);
+	cmd.stdout.on('data', (data) => {
+		console.log(" process for "+cmd+" is PID: "+cmd.pid)
+		console.log(`stdout: ${data}`);
+	});
+
+	cmd.stderr.on('data', (data) => {
+		console.log(`stderr: ${data}`);
+	});
+
+	cmd.on('close', (code) => {
+ 		 console.log(`child process exited with code ${code}`);
+	});
 }
 // program start
 /////////////////////////////////////////////////////////////////
@@ -97,34 +130,68 @@ program
 	.version('0.0.1')
 	.usage('node index -c <command>,<arg1>,<arg2>,ect..')
 	.description('setup main options for the deployment')
-	.option('-C, --chdir <path>', 'change the working directory', __dirname)
-	.option('-c, --cmd [Array]', 'Array of command and args', collect, [])
-	.option('-d, --dependencies [Array]', 'Array dependencies files', collect, [])
-	.option('-r, --reinstall', 'Set to re-install dependencies ')
 	.option('-v, --verbose', 'Set to verbose ')
-	.option("-m, --makefile [mode]", "use a makefile for dependencies", null)
-
+	
+// node index add -c "node index -h"
+program
+	.command('add')
+	.description('add a new process to be watched')
+	.option('-C, --chdir <path>', 'change the working directory', __dirname)
+	.option('-c, --cmd [String]', 'Array of command and args', null)
+	.option('-d, --dependencies [Array]', 'Array dependencies files', collect, [])
+	.option('-r, --reinstall [mode]', 'Set to re-install dependencies ', false)
+	.option("-m, --makefile [mode]", "use a makefile for dependencies", false)
+	.action(function(options){
+		fs.stat(RECOVERY, function(err, stat) {
+			if(err == null) {
+				jsonfile.readFile(RECOVERY, function(err, obj) {
+					if (obj != null){
+						var p = new watcher(options)
+						console.log("new command p : "+JSON.stringify(p))
+						obj.process.push(p)
+						jsonfile.writeFile(RECOVERY, obj, function (err) {
+							if(err){
+								throw new MyError("writing new process has failed");
+							}
+							console.log("new command succesfully added : "+JSON.stringify(obj))
+						})
+					}
+				})
+			}else{
+				throw new MyError("you must run setup or config command before adding process to be listened");
+			}
+		})
+	});
+	
+// node index config -p "./config.js"
 program
 	.command('config')
 	.description('use a config file for the deployment')
-	.option('-p, --path [String]', 'path to use a config file, default to '+__dirname+"/config.json", __dirname+"/config.json")
-	.action(function(env, options){
-		if (options.dependencies.length > 0 || options.cmd.length > 0 ){
-			throw new MyError("cannot use config with other options");
+	.option('-p, --path [String]', 'path to use a config file, default to '+path.join(__dirname,"/config.json"))
+	.action(function(options){
+		//if (options.dependencies.length > 0 || options.cmd.length > 0 ){
+			//throw new MyError("cannot use config with other options");
+		//}
+		//console.log('config command with options:'+  unCircularize(options));
+		console.log('config command with options.path:'+  options.path);
+		var config_path= path.join( __dirname,"/config.js")
+		if(options && options.path){
+			 config_path = options.path
 		}
-		console.log('action for configfile has been called', options);
-		path.exists(options.path, function(exists) { 
-			if (exists) { 
-				CONFIG = require(options.path)
+		fs.stat(config_path, function(err, stat) {
+			if(err == null) {
+				CONFIG = require(config_path)
+				console.log('config had been read with:'+  JSON.stringify(CONFIG));
+				PROC = new deploy(CONFIG)
 			}else{
 				throw new MyError("config file path is invalid: "+options.path);
 			}
 		})
 			
-		PROC = new deploy(CONFIG)
-		path.exists(RECOVERY, function(exists) { 
-			if (exists) { 
-				jsonfile.writeFile(options.path, PROC, function (err) {
+		
+		fs.stat(RECOVERY, function(err, stat) {
+			if(err == null) {
+				jsonfile.writeFile(RECOVERY, PROC, function (err) {
 					if(err){
 					throw new MyError(err.message);
 				}
@@ -137,6 +204,62 @@ program
 			}
 		});
 	});
+	
+// node index start -v
+program
+	.command('start')
+	.description('start all process ')
+	.option('-v, --verbose', 'Set to verbose ')
+	.action(function(options){
+		fs.stat(RECOVERY, function(err, stat) {
+			
+			if(err == null) {
+				jsonfile.readFile(RECOVERY, function(err, obj) {
+					if (obj != null){
+						const  cmd =[]
+						for (var i = 0; i < obj.process.length; i++) {
+							var c = obj.process[i].cmd
+							console.log("obj recovered is: "+JSON.stringify(c)) 
+							var s = c.split(" ")
+							var command = s[0]
+							var args =[]
+							console.log("obj plit s: "+JSON.stringify(s))
+							for (var x = 1; x < s.length; x++) {
+								args.push(s[x])
+							}
+							console.log("obj command: "+JSON.stringify(command))
+							console.log("obj args: "+JSON.stringify(args))
+							start(command, args, i)
+						}
+					}
+	});
+}
+})
+})
+	
+// node setup start -v
+program
+	.command('setup')
+	.description('add a new process to be watched')
+	.option('-v, --verbose', 'Set to verbose ')
+	.action(function(options){
+		PROC = new deploy(options)
+		fs.stat(RECOVERY, function(err, stat) {
+			if(err == null) {
+				jsonfile.writeFile(RECOVERY, PROC, function (err) {
+					if(err){
+					throw new MyError(err.message);
+				}
+				if (program.verbose){
+					console.log('PROC created: '+JSON.stringify(PROC))
+				}
+				})
+			}else{
+				throw new MyError("config file path is invalid: "+RECOVERY);
+			}
+		});
+		
+	})
 	
 	// parse the args
 	program.parse(process.argv);
@@ -152,24 +275,7 @@ program
 	
 	// Start the program
 	// 1. setup deploy object- catch cmd and args, working directory and dependencies/makefile files
-	if (PROC == {}){
-		PROC = new deploy(program)
-		path.exists(options.path, function(exists) { 
-			if (exists) { 
-				jsonfile.writeFile(options.path, PROC, function (err) {
-					if(err){
-					throw new MyError(err.message);
-				}
-				if (program.verbose){
-					console.log('PROC created: '+JSON.stringify(PROC))
-				}
-				})
-			}else{
-				throw new MyError("config file path is invalid: "+options.path);
-			}
-		});
-		
-	}
+
 	// save the last PROC object to file for recovery
 	
 	// 2. start the commands list and store their pid in a txt file
