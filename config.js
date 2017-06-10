@@ -21,7 +21,15 @@ var Config = {
 			makefile: null,
 			reinstall : true,
 			dependencies: "bidon2",
-			cwd: "/deployjs"
+			cwd: "/deployjs",
+			authentication: false,
+			credentials:{
+				type: null,
+				username: null,
+				password: null,
+				sudo: null,
+				passphrase: null
+			}
 		}
 	]
 }
