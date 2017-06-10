@@ -1,11 +1,11 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
-// mail.js
-// Version : 1.0.0
-// Open-source GNU 3.0
+// index.js
+// Version : 0.0.1
+// Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
-// Example of single manual use:
+// Change settings here to auto set teh CLI process
 //
 //========================================================
 // spawn observer
@@ -96,10 +96,27 @@ function getCommand(cmd){
 }
 // execute a makefile in the chosen cwd before spawning the process anew
 function make(makefile, cwd, cb){
+try {
+	var command;
+	var ext = makefile.split('.').pop();
+	switch (ext) {
+	case "sh":
+		command = "bash "
+		break;
+	case "js":
+		command = "node "
+		break;
+	case "py":
+		command = "python "
+		break;
+	default:
+		throw new MyError("makefile extension is not supported extension: "+ext);
+		break;
+	}
 	changeDirectory( path.join(__dirname, cwd))
 	console.log('MAKEFILE TRIGGERED:');
 	const  exec  = require('child_process').exec;
-	exec(makefile, function(err, stdout, stderr){
+	exec(command+makefile, function(err, stdout, stderr){
 		if (err) {
 			console.error(err);
 			return cb(err);
@@ -107,7 +124,9 @@ function make(makefile, cwd, cb){
 		console.log(' MAKEFILE stdout:'+stdout);
 		return cb(null)
 	})
-	
+}catch (err) {
+	console.log('MAKEFILE ERR: ' + err);
+}
 };
 
 // execute a makefile in the chosen cwd before spawning the process anew
