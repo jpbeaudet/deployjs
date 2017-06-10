@@ -36,7 +36,6 @@ var process = require('process');
 var CONFIG = null
 var PROC = {}
 var RECOVERY = path.join(__dirname, "/bin/recovery.js")
-var _DIR = __dirname
 
 // helpers section
 /////////////////////////////////////////////////////////////////
@@ -51,7 +50,7 @@ MyError.prototype = Object.create(Error.prototype);
 MyError.prototype.constructor = MyError;
 
 function deleteFolderRecursive(path, cb) {
-	console.log(path)
+	console.log("DELETEFILE: "+path)
 	if( fs.existsSync(path) ) {
 		fs.readdirSync(path).forEach(function(file,index){
 			console.log(path + "/" + file)
@@ -64,7 +63,7 @@ function deleteFolderRecursive(path, cb) {
 		});
 		fs.rmdirSync(path);
 	}
-	return cb()
+	cb()
 };
 
 function collect(val, memo) {
@@ -114,12 +113,12 @@ function make(makefile, cwd, cb){
 // execute a makefile in the chosen cwd before spawning the process anew
 function install(dependencies, cwd,  cb){console.log( ' INSTALL TRIGGERED:');
 	//changeDirectory( path.join(__dirname, cwd))
-	const  exec  = require('child_process').exec;
-	deleteFolderRecursive(path.join(__dirname, cwd, dependencies), function () { 
+	deleteFolderRecursive(path.join(__dirname, dependencies), function () { 
+		const  exec  = require('child_process').exec;
 		console.log('rm -rf done for: '+path.join(__dirname, cwd, dependencies)); 
 		exec("npm install", function(err, stdout, stderr){
 			if (err) {
-				console.error(err);
+				console.error(' INSTALL err:'+err);
 				return cb(err);
 			}
 			console.log(' INSTALL stdout:'+stdout);
@@ -149,6 +148,19 @@ try {
 								if (err){
 									console.log(err)
 								}
+								if(dependencies != null){
+									console.log( ' REINSTALL TRIGGERED: %s', id);
+									install(dependencies, cwd, function(err){
+										if (err){
+											console.log(err)
+										}
+										var exec = new getCommand(cmd)
+										return start(exec.command, exec.args, id, obj, cwd)
+									})
+								}else{
+									var exec = new getCommand(cmd)
+									return start(exec.command, exec.args, id, obj, cwd)
+								}
 							})
 						}
 						if(dependencies != null){
@@ -157,10 +169,11 @@ try {
 								if (err){
 									console.log(err)
 								}
+								var exec = new getCommand(cmd)
+								return start(exec.command, exec.args, id, obj, cwd)
 							})
 						}
-						var exec = new getCommand(cmd)
-							start(exec.command, exec.args, id, obj, cwd)
+						
 					}else{
 						var exec = new getCommand(cmd)
 							start(exec.command, exec.args, id, obj, cwd)
@@ -266,6 +279,7 @@ try {
 /////////////////////////////////////////////////////////////////
 function deploy(program){
 try {
+	this.chdir = program.chdir || __dirname
 	this.verbose = program.verbose
 	this.process = program.process || []
 }catch(err) {
@@ -275,7 +289,7 @@ try {
 
 function watcher(options){
 try {
-	this.cwd =  program.chdir || "/"
+	this.cwd =  path.normalize(program.chdir) || "/"
 	this.pid = null
 	this.status = false
 	if(options.makefile){
@@ -319,6 +333,7 @@ program
 	.usage('node index -c <command>,<arg1>,<arg2>,ect..')
 	.description('setup main options for the deployment')
 	.option('-v, --verbose', 'Set to verbose ')
+	.option('-ch, --chdir <path>', 'change the base working directory', __dirname)
 	
 // node index add -c "node index -h"
 program

@@ -18,8 +18,10 @@
   "license": "GPL-3.0",
   "dependencies": {
     "commander": "",
+    "graceful-readlink": "^1.0.1",
     "jsonfile": "",
     "path": "",
+    "process": "^0.11.10",
     "ps-node": ""
   }
 }
