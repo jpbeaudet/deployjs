@@ -30,6 +30,7 @@ var ps = require('ps-node');
 var path = require('path'); 
 var jsonfile = require('jsonfile')
 var process = require('process');
+var suppose = require('suppose')
 
 // globals
 /////////////////////////////////////////////////////////////////
@@ -113,8 +114,10 @@ try {
 		throw new MyError("makefile extension is not supported extension: "+ext);
 		break;
 	}
-	changeDirectory( path.join(__dirname, cwd))
-	console.log('MAKEFILE TRIGGERED:');
+	if(__dirname != cwd){
+		changeDirectory( path.normalize(cwd))
+		console.log('MAKEFILE TRIGGERED: '+path.normalize(cwd));
+	}
 	const  exec  = require('child_process').exec;
 	exec(command+makefile, function(err, stdout, stderr){
 		if (err) {
@@ -131,7 +134,11 @@ try {
 
 // execute a makefile in the chosen cwd before spawning the process anew
 function install(dependencies, cwd,  cb){console.log( ' INSTALL TRIGGERED:');
-	//changeDirectory( path.join(__dirname, cwd))
+	//var dir = __dirname.split('/').pop();
+	if(__dirname != cwd){
+		changeDirectory( path.normalize(cwd))
+		console.log(' INSTALL path:'+path.normalize(cwd));
+	}
 	deleteFolderRecursive(path.join(__dirname, dependencies), function () { 
 		const  exec  = require('child_process').exec;
 		console.log('rm -rf done for: '+path.join(__dirname, cwd, dependencies)); 
@@ -159,7 +166,7 @@ try {
 					var reinstall = obj.process[id].reinstall
 					var makefile = obj.process[id].makefile
 					var dependencies = obj.process[id].dependencies
-					var cwd = obj.process[id].cwd
+					var cwd = obj.chdir+obj.process[id].cwd
 					if (reinstall){
 						if (makefile != null){
 							console.log( ' MAKEFILE TRIGGERED: %s', id);
@@ -257,10 +264,16 @@ catch (err) {
 function start(command, args, id, obj,cwd){
 
 try {
-	changeDirectory( path.join(__dirname, cwd))
+	if(__dirname != cwd){
+		changeDirectory( path.normalize(cwd))
+		console.log('SATART TRIGGERED: '+path.normalize(cwd));
+	}
 	const spawn = require('child_process').spawn;
+
 	console.log(" start cmd: "+ '("'+command+'",'+args+')')
-	const cmd = spawn(command, args);
+	//const cmd = spawn(command, args);
+	const cmd = spawn(command, args, { detached: true, stdio: [ 'ignore', out, err ] });
+	cmd.unref();
 	cmd.stdout.on('data', (data) => {
 		console.log(" process for "+cmd+" is PID: "+cmd.pid)
 		obj.process[id].pid = cmd.pid
@@ -308,7 +321,7 @@ try {
 
 function watcher(options){
 try {
-	this.cwd =  path.normalize(program.chdir) || "/"
+	this.cwd =  path.join(__dirname, program.cwd) || path.normalize(__dirname)
 	this.pid = null
 	this.status = false
 	if(options.makefile){

@@ -1,1 +1,1 @@
-
+{"chdir":"C:\\cygwin64\\home\\user\\deployjs","verbose":true,"process":[{"cmd":"node index.js -h","pid":null,"status":false,"makefile":null,"reinstall":true,"dependencies":"bidon2","cwd":"/deployjs"}]}

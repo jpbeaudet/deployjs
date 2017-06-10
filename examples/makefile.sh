@@ -1,5 +1,8 @@
 #!/bin/bash
-if [ ! -d /bidon ]; then
-  mkdir -p /bidon
-  mkdir -p /bidon/test1/;
+
+directory="$HOME/Bidon"
+
+if [ ! -d "${directory}" ]
+then
+    mkdir "${directory}"
 fi

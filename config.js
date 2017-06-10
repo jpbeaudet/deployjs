@@ -17,7 +17,7 @@ var Config = {
 			cmd:"node index.js -h",
 			pid: null,
 			status: false,
-			makefile: "examples/makefile.js",
+			makefile: null,
 			reinstall : true,
 			dependencies: "bidon2",
 			cwd: "/deployjs"
