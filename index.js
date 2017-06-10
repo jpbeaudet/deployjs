@@ -30,7 +30,7 @@ var ps = require('ps-node');
 var path = require('path'); 
 var jsonfile = require('jsonfile')
 var process = require('process');
-var suppose = require('suppose')
+//var suppose = require('suppose')
 
 // globals
 /////////////////////////////////////////////////////////////////
@@ -162,11 +162,13 @@ try {
 			jsonfile.readFile(RECOVERY, function(err, obj) {
 				if (obj != null){
 					//console.log( ' COMMAND: %s', obj.process[id].cmd);
+					var root = obj.root
 					var cmd = obj.process[id].cmd
 					var reinstall = obj.process[id].reinstall
 					var makefile = obj.process[id].makefile
 					var dependencies = obj.process[id].dependencies
-					var cwd = obj.chdir+obj.process[id].cwd
+					var cwd = path.join(root, obj.process[id].cwd)
+					console.log( ' BOOTSTRAP cwd: %s', cwd);
 					if (reinstall){
 						if (makefile != null){
 							console.log( ' MAKEFILE TRIGGERED: %s', id);
@@ -266,14 +268,14 @@ function start(command, args, id, obj,cwd){
 try {
 	if(__dirname != cwd){
 		changeDirectory( path.normalize(cwd))
-		console.log('SATART TRIGGERED: '+path.normalize(cwd));
+		console.log('START TRIGGERED: '+path.normalize(cwd));
 	}
+	
 	const spawn = require('child_process').spawn;
 
 	console.log(" start cmd: "+ '("'+command+'",'+args+')')
 	//const cmd = spawn(command, args);
-	const cmd = spawn(command, args, { detached: true, stdio: [ 'ignore', out, err ] });
-	cmd.unref();
+	const cmd = spawn(command, args, { detached: true});
 	cmd.stdout.on('data', (data) => {
 		console.log(" process for "+cmd+" is PID: "+cmd.pid)
 		obj.process[id].pid = cmd.pid
@@ -311,7 +313,7 @@ try {
 /////////////////////////////////////////////////////////////////
 function deploy(program){
 try {
-	this.chdir = program.chdir || __dirname
+	this.root = path.normalize(program.root) || path.normalize(path.dirname(__dirname))
 	this.verbose = program.verbose
 	this.process = program.process || []
 }catch(err) {
@@ -321,7 +323,12 @@ try {
 
 function watcher(options){
 try {
-	this.cwd =  path.join(__dirname, program.cwd) || path.normalize(__dirname)
+	var root;
+	fs.stat(RECOVERY, function(err, stat) {
+		if(err == null) {
+		jsonfile.readFile(RECOVERY, function(err, obj) {
+			root = obj.root
+	this.cwd =  path.join(root, program.cwd) 
 	this.pid = null
 	this.status = false
 	if(options.makefile){
@@ -353,10 +360,16 @@ try {
 	}else{
 		throw new MyError("must have at least 1 command ti run");
 	}
+				
+			})
+			}
+		})
+	
 }catch(err) {
 		throw new MyError("process constructor has failed");
 }
 }
+
 
 // command-line options section
 /////////////////////////////////////////////////////////////////
@@ -371,7 +384,8 @@ program
 program
 	.command('add')
 	.description('add a new process to be watched')
-	.option('-C, --chdir <path>', 'change the working directory', "/")
+	.option('-r, --root <path>', 'change the rootdirectory', path.resolve(__dirname))
+	.option('-C, --cwd <path>', 'change the working directory', "/")
 	.option('-c, --cmd [String]', 'Array of command and args', null)
 	.option('-d, --dependencies [String]', 'Array dependencies files', null)
 	.option('-r, --reinstall [mode]', 'Set to re-install dependencies ', false)
@@ -450,7 +464,7 @@ program
 						const  cmd =[]
 						for (var i = 0; i < obj.process.length; i++) {
 							var exec = new getCommand(obj.process[i].cmd)
-								start(exec.command, exec.args, i, obj, obj.process[i].cwd)
+								start(exec.command, exec.args, i, obj, path.join(obj.root, obj.process[i].cwd))
 						}
 					}
 				});

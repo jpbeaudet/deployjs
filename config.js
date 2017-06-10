@@ -8,9 +8,10 @@
 // Change settings here to auto set teh CLI process
 //
 //========================================================
+var path = require('path'); 
 
 var Config = {
-	chdir: __dirname,
+	root: path.normalize(path.dirname(__dirname)),
 	verbose: true,
 	process: [
 		{
