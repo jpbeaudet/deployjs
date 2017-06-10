@@ -1,6 +1,6 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
-// index.js
+// lunchjs.js
 // Version : 0.0.1
 // Open-source GPL-3.0
 //
@@ -449,7 +449,7 @@ program
 	.description('Welcome to lunchjs commandline tool for ligth process boostrapping ')
 	.option('-v, --verbose', 'Set to verbose ')
 	
-// node index add -c "node index -h"
+// node lunchjs add -c "node index -h"
 program
 	.command('add')
 	.description('add a new process to be watched')
@@ -500,7 +500,7 @@ program
 		})
 	});
 	
-// node index config -p "./config.js"
+// node lunchjs config -p "./config.js"
 program
 	.command('config')
 	.description('use a config file for the deployment')
@@ -555,7 +555,7 @@ program
 		});
 	});
 	
-// node index start -v
+// node lunchjs start -v
 program
 	.command('start')
 	.description('start all process ')
@@ -591,7 +591,7 @@ program
 		})
 	})
 	
-// node setup start -v
+// node lunchjs setup -v
 program
 	.command('setup')
 	.description('add a new process to be watched')

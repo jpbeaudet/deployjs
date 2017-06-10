@@ -1,10 +1,10 @@
 {
-  "name": "deployjs",
+  "name": "lunchjs",
   "version": "0.0.1",
-  "description": "nodejs CLI to handle deployment, npm install and watch the PID of current process. Handles error and restart",
+  "description": "nodejs CLI to launch multiple application and process, handle deployment, dependencies installation. It also listen to PID and will restart on process fail",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node lunchjs start -v"
   },
   "repository": {
     "type": "git",
@@ -12,7 +12,10 @@
   },
   "keywords": [
     "deployment",
-    "pid"
+    "pid",
+    "launch",
+    "process",
+    "deploy"
   ],
   "authors": "Jean-Philippe Beaudet <jpbeaudet@s3r3nity.com> ",
   "license": "GPL-3.0",
