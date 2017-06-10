@@ -24,16 +24,16 @@ var Config = {
 			ttl:100,
 			status: false,
 			makefile: null,
-			reinstall : true,
-			dependencies: "bidon",
+			reinstall : false,
+			dependencies: null,
 			cwd: "/deployjs",
 			authentication: false,
 			credentials:{
-				type: "passphrase" , 
+				type: null , 
 				username: null,
 				password: null,
 				sudo: null,
-				passphrase: "RaNDom7$!KEy"
+				passphrase: null
 			}
 		}
 	]

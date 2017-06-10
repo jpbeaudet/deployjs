@@ -13,8 +13,9 @@
 	var childProcess = require("child_process");
 	var oldSpawn = childProcess.spawn;
 	function mySpawn() {
-		console.log('spawn called');
+		console.log(APPNAME+' | SPAWN | spawn called *');
 		console.log(arguments);
+
 		var result = oldSpawn.apply(this, arguments);
 		return result;
 	}
@@ -31,6 +32,7 @@ var path = require('path');
 var jsonfile = require('jsonfile')
 var process = require('process');
 var suppose = require('suppose')
+var moment = require("moment")
 
 // globals
 /////////////////////////////////////////////////////////////////
@@ -38,6 +40,10 @@ var CONFIG = null
 var PROC = {}
 var RECOVERY = path.join(__dirname, "/bin/recovery.js")
 var DEBUG = path.join(__dirname,'/bin/debug.txt')
+var NOW = moment().format('lll')
+var APPNAME = " LUNCHJS : "+NOW+" "
+var VERBOSE = false
+
 // helpers section
 /////////////////////////////////////////////////////////////////
 
@@ -51,18 +57,21 @@ MyError.prototype = Object.create(Error.prototype);
 MyError.prototype.constructor = MyError;
 
 function deleteFolderRecursive(path, cb) {
-	console.log("DELETEFILE: "+path)
+	console.log(APPNAME+" IMPORTANT | deleting directories an files on path: "+path)
 	if( fs.existsSync(path) ) {
 		fs.readdirSync(path).forEach(function(file,index){
-			console.log(path + "/" + file)
+			console.log(APPNAME+" Deleting... "+path+"/" +file)
 		var curPath = path + "/" + file;
 		if(fs.lstatSync(curPath).isDirectory()) { // recurse
-			deleteFolderRecursive(curPath);
+			deleteFolderRecursive(curPath,function(){
+				
+				});
 		} else { // delete file
 			fs.unlinkSync(curPath);
 		}
 		});
 		fs.rmdirSync(path);
+		
 	}
 	cb()
 };
@@ -111,43 +120,37 @@ try {
 		command = "python "
 		break;
 	default:
-		throw new MyError("makefile extension is not supported extension: "+ext);
+		throw new MyError(APPNAME+" CRITICAL | makefile | extension is not supported extension: "+ext);
 		break;
 	}
 	if(__dirname != cwd){
 		changeDirectory( path.normalize(cwd))
-		console.log('MAKEFILE TRIGGERED: '+path.normalize(cwd));
 	}
 	const  exec  = require('child_process').exec;
 	exec(command+makefile, function(err, stdout, stderr){
 		if (err) {
-			console.error(err);
+			console.error(APPNAME+" CRITICAL | err: "+err);
 			return cb(err);
 		}
-		console.log(' MAKEFILE stdout:'+stdout);
 		return cb(null)
 	})
 }catch (err) {
-	console.log('MAKEFILE ERR: ' + err);
+	throw new MyError(APPNAME+" CRITICAL | Makefile |  err: " + err);
 }
 };
 
 // execute a makefile in the chosen cwd before spawning the process anew
-function install(dependencies, cwd,  cb){console.log( ' INSTALL TRIGGERED:');
-	//var dir = __dirname.split('/').pop();
+function install(dependencies, cwd,  cb){
 	if(__dirname != cwd){
 		changeDirectory( path.normalize(cwd))
-		console.log(' INSTALL path:'+path.normalize(cwd));
 	}
 	deleteFolderRecursive(path.join(__dirname, dependencies), function () { 
 		const  exec  = require('child_process').exec;
-		console.log('rm -rf done for: '+path.join(__dirname, cwd, dependencies)); 
 		exec("npm install", function(err, stdout, stderr){
 			if (err) {
-				console.error(' INSTALL err:'+err);
+				console.error(APPNAME+' CRITICAL | INSTALL err:'+err.message);
 				return cb(err);
 			}
-			console.log(' INSTALL stdout:'+stdout);
 			return cb(null)
 		})
 	});
@@ -156,7 +159,6 @@ function install(dependencies, cwd,  cb){console.log( ' INSTALL TRIGGERED:');
 // boostrap a failed process, re-install if called so and restart
 function bootstrap(id){
 try {
-	console.log( ' BOOTSTRAP TRIGGERED: %s', id);
 	fs.stat(RECOVERY, function(err, stat) {
 		if(err == null) {
 			jsonfile.readFile(RECOVERY, function(err, obj) {
@@ -168,16 +170,15 @@ try {
 					var makefile = obj.process[id].makefile
 					var dependencies = obj.process[id].dependencies
 					var cwd = path.join(root, obj.process[id].cwd)
-					console.log( ' BOOTSTRAP cwd: %s', cwd);
 					if (reinstall){
 						if (makefile != null){
-							console.log( ' MAKEFILE TRIGGERED: %s', id);
+							//console.log( APPNAME+' | bootstrap | Makefile triggered: %s', id);
 							make(makefile, cwd, function(err){
 								if (err){
 									console.log(err)
 								}
 								if(dependencies != null){
-									console.log( ' REINSTALL TRIGGERED: %s', id);
+									//console.log( APPNAME+' | bootstrap | new install for: %s', id);
 									install(dependencies, cwd, function(err){
 										if (err){
 											console.log(err)
@@ -192,7 +193,7 @@ try {
 							})
 						}
 						if(dependencies != null){
-							console.log( ' REINSTALL TRIGGERED: %s', id);
+							//console.log( APPNAME+' | bootstrap |  new install for: %s', id);
 							install(dependencies, cwd, function(err){
 								if (err){
 									console.log(err)
@@ -208,16 +209,16 @@ try {
 					}
 					
 				}else{
-					throw new MyError("you must run config or setup befor starting, or bootstraping commands ");
+					throw new MyError(APPNAME+" CRITICAL | Boostrap | you must run config or setup befor starting, or bootstraping commands ");
 				}
 			})
 			
 		}else{
-			throw new MyError("recovery file path is invalid ");
+			throw new MyError(APPNAME+" CRITICAL | Boostrap | RECOVERY file path is invalid ");
 		}
 })
 }catch (err) {
-	console.log('chdir: ' + err);
+	console.log(APPNAME+' CRITICAL | chdir: ' + err);
 }
 }
 
@@ -229,11 +230,13 @@ function lookup(pid, id){
 		}
 		var process = resultList[ 0 ];
 		if( process ){
-			console.log( 'PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
+			console.log("\n")
+			console.log( APPNAME+' | Lookup | PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
+
 			return true
 		}
 		else {
-			console.log( 'No such process found! PID: '+pid);
+			console.log(APPNAME+' IMPORTANT | No such process found! PID: '+pid+' starting bootstrap... ');
 			return bootstrap(id)
 		}
 });
@@ -246,19 +249,18 @@ try {
 	}, 100);
 
 }catch(err) {
-	throw new MyError(" listen() has failed for PID: "+pid);
+	throw new MyError(APPNAME+" CRITICAL | listen() has failed for PID: "+pid+" with process: "+ JSON.stringify(obj[id]));
 }
 }
-
 // change directory to spwan new process
 function changeDirectory(cwd){
-	console.log('Starting directory: ' + process.cwd());
+	//console.log(APPNAME+' IMPORTANT | Starting directory: ' + process.cwd());
 try {
 	process.chdir(cwd);
-	console.log('New directory: ' + process.cwd());
+	//console.log(APPNAME+' IMPORTANT | New directory: ' + process.cwd());
 }
 catch (err) {
-	console.log('chdir: ' + err);
+	console.log(APPNAME+' CRITICAL | chdir: ' + err);
 }
 }
 function sudo(command, args, id, obj,cwd, cb){
@@ -270,6 +272,7 @@ function sudo(command, args, id, obj,cwd, cb){
 	})
 	.end(function(code){
 		console.log('sudo mode exited with code: '+code);
+
 		return cb(process.pid)
 })
 }
@@ -285,7 +288,6 @@ function git(command, args, id, obj,cwd, cb){
 	})
 	.end(function(code){
 		console.log('git mode exited with code: '+code);
-		
 		return cb(process.pid)
 	})
 }
@@ -324,7 +326,7 @@ function startAuth(command, args, id, obj,cwd){
 				})
 			
 		default:
-			throw new MyError("authentication type is not supported type: "+type);
+			throw new MyError(APPNAME+" CRITICAL | Authentication mode | Authentication type is not supported type: "+type);
 }
 }
 
@@ -351,10 +353,10 @@ try {
 		obj.process[id].status = true
 		jsonfile.writeFile(RECOVERY, obj, function (err) {
 			if(err){
-				throw new MyError(err.message);
+				throw new MyError(APPNAME+" CRITICAL | Start command spawn failed with err: "+err.message);
 			}
 			listen(cmd.pid, id, obj)
-			console.log(`stdout: ${data}`);
+			//console.log(`stdout: ${data}`);
 		})
 	});
 
@@ -369,12 +371,11 @@ try {
 			if(err){
 				throw new MyError(err.message);
 			}
-			//listen(cmd.pid)
-			console.log(`child process exited with code ${code}`);
+			//console.log(APPNAME+" IMPORTANT | SPAWN exited with code: "+ code);
 		})
 	});
 }catch(err) {
-	throw new MyError("start command has failed for "+'("'+command+'",'+args+')');
+	throw new MyError(APPNAME+" CRITICAL | Start command has failed for "+'("'+command+'",'+args+') with err: '+err);
 }
 }
 
@@ -386,7 +387,7 @@ try {
 	this.verbose = program.verbose
 	this.process = program.process || []
 }catch(err) {
-	throw new MyError("deploy constructor has failed");
+	throw new MyError(APPNAME+" CRITICAL | setup constructor has failed err: "+err);
 }
 }
 
@@ -406,7 +407,7 @@ try {
 			if(err == null) {
 				this.makefile = options.makefile
 			}else{
-				throw new MyError("makeFile path is not valid makefile: "+options.makefile);
+				throw new MyError(APPNAME+" CRITICAL | makeFile path is not valid file: "+options.makefile);
 			}
 		}); 
 		
@@ -416,7 +417,7 @@ try {
 			if(err == null) {
 				this.dependencies = options.dependencies
 			}else{
-				throw new MyError("dependencies path is not valid path: "+options.dependencies);
+				throw new MyError(APPNAME+" CRITICAL | Dependencies path is not valid path: "+options.dependencies);
 			}
 		}); 
 		
@@ -428,7 +429,7 @@ try {
 	if(options.cmd){
 		this.cmd = options.cmd
 	}else{
-		throw new MyError("must have at least 1 command ti run");
+		throw new MyError(APPNAME+" CRITICAL | You fill the command value in config or in add command ");
 	}
 				
 			})
@@ -436,7 +437,7 @@ try {
 		})
 	
 }catch(err) {
-		throw new MyError("process constructor has failed");
+		throw new MyError(APPNAME+" CRITICAL | process constructor has failed");
 }
 }
 
@@ -445,15 +446,14 @@ try {
 /////////////////////////////////////////////////////////////////
 program
 	.version('0.0.1')
-	.usage('node index -c <command>,<arg1>,<arg2>,ect..')
-	.description('setup main options for the deployment')
+	.description('Welcome to lunchjs commandline tool for ligth process boostrapping ')
 	.option('-v, --verbose', 'Set to verbose ')
-	.option('-ch, --chdir <path>', 'change the base working directory', __dirname)
 	
 // node index add -c "node index -h"
 program
 	.command('add')
 	.description('add a new process to be watched')
+	.usage('node index add -c <command>')
 	.option('-r, --root <path>', 'change the rootdirectory', path.resolve(__dirname))
 	.option('-C, --cwd <path>', 'change the working directory', "/")
 	.option('-c, --cmd [String]', 'Array of command and args', null)
@@ -461,7 +461,24 @@ program
 	.option('-r, --reinstall [mode]', 'Set to re-install dependencies ', false)
 	.option("-m, --makefile [path]", "path to a makefile to install dependencies", null)
 	.option("-t, --ttl [milliseconds]", "time in milliseconds for the pid lookup cycle", 100)
+	.option('-v, --verbose', 'Set to verbose ')
 	.action(function(options){
+		console.log("*********************************")
+		console.log("*            Lunchjs            *")
+		console.log("*                               *")
+		console.log("* Author: Jean-Philippe Beaudet *")
+		console.log("* Version: 0.0.1                *")
+		console.log("* License:GPL-3.0               *")
+		console.log("*                               *")
+		console.log("*        ADD new process        *")
+		console.log("*                               *")
+		console.log("*            Adding  ...        *")
+		console.log("*                               *")
+		console.log("*********************************")
+		if (options.verbose){
+			VERBOSE = true
+		}
+
 		fs.stat(RECOVERY, function(err, stat) {
 			if(err == null) {
 				jsonfile.readFile(RECOVERY, function(err, obj) {
@@ -473,12 +490,12 @@ program
 							if(err){
 								throw new MyError("writing new process has failed");
 							}
-							console.log("new command succesfully added : "+JSON.stringify(obj))
+							console.log(APPNAME+" ADD | new command succesfully added : "+JSON.stringify(obj))
 						})
 					}
 				})
 			}else{
-				throw new MyError("you must run setup or config command before adding process to be listened");
+				throw new MyError(APPNAME+" CRITICAL | you must run setup or config command before adding process to be listened");
 			}
 		})
 	});
@@ -487,9 +504,26 @@ program
 program
 	.command('config')
 	.description('use a config file for the deployment')
+	.usage('node index config -p <path/to/config.js>')
 	.option('-p, --path [String]', 'path to use a config file, default to '+path.join(__dirname,"/config.json"))
+	.option('-v, --verbose', 'Set to verbose ')
 	.action(function(options){
-		console.log('config command with options.path:'+  options.path);
+		console.log("*********************************")
+		console.log("*            Lunchjs            *")
+		console.log("*                               *")
+		console.log("* Author: Jean-Philippe Beaudet *")
+		console.log("* Version: 0.0.1                *")
+		console.log("* License:GPL-3.0               *")
+		console.log("*                               *")
+		console.log("* Read process from config file *")
+		console.log("*                               *")
+		console.log("*            Reading...         *")
+		console.log("*                               *")
+		console.log("*********************************")
+		
+		if (options.verbose){
+			VERBOSE = true
+		}
 		var config_path= path.join( __dirname,"/config.js")
 		if(options && options.path){
 			 config_path = options.path
@@ -497,7 +531,7 @@ program
 		fs.stat(config_path, function(err, stat) {
 			if(err == null) {
 				CONFIG = require(config_path)
-				console.log('config had been read with:'+  JSON.stringify(CONFIG));
+				console.log(APPNAME+' config had been read with:'+  JSON.stringify(CONFIG));
 				PROC = new deploy(CONFIG)
 			}else{
 				throw new MyError("config file path is invalid: "+options.path);
@@ -511,12 +545,12 @@ program
 					if(err){
 					throw new MyError(err.message);
 				}
-				if (program.verbose){
-					console.log('PROC created: '+JSON.stringify(PROC))
-				}
+				//if (VERBOSE){
+					//console.log(APPNAME+' PROC created: '+JSON.stringify(PROC))
+				//}
 				})
 			}else{
-				throw new MyError("RECOVERY file path is invalid: "+RECOVERY);
+				throw new MyError(APPNAME+" CRITICAL | RECOVERY file path is invalid: "+RECOVERY);
 			}
 		});
 	});
@@ -525,8 +559,22 @@ program
 program
 	.command('start')
 	.description('start all process ')
+	.usage('node index start -v')
 	.option('-v, --verbose', 'Set to verbose ')
 	.action(function(options){
+		console.log("*********************************")
+		console.log("*            Lunchjs            *")
+		console.log("*                               *")
+		console.log("* Author: Jean-Philippe Beaudet *")
+		console.log("* Version: 0.0.1                *")
+		console.log("* License:GPL-3.0               *")
+		console.log("*                               *")
+		console.log("* Starting processes ...        *")
+		console.log("*                               *")
+		console.log("*********************************")
+		if (options.verbose){
+			VERBOSE = true
+		}
 		fs.stat(RECOVERY, function(err, stat) {
 			
 			if(err == null) {
@@ -556,9 +604,9 @@ program
 					if(err){
 					throw new MyError(err.message);
 				}
-				if (program.verbose){
-					console.log('PROC created: '+JSON.stringify(PROC))
-				}
+				//if (program.verbose){
+					//console.log('PROC created: '+JSON.stringify(PROC))
+				//}
 				})
 			}else{
 				throw new MyError("config file path is invalid: "+RECOVERY);
@@ -569,3 +617,6 @@ program
 	
 	// parse the args
 	program.parse(process.argv);
+	if(program.verbose){
+		VERBOSE = true
+	}

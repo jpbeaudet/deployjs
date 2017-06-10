@@ -1,1 +1,1 @@
-{"root":"C:\\cygwin64\\home\\user","verbose":true,"process":[{"cmd":"node index -h","pid":null,"ttl":100,"status":false,"makefile":null,"reinstall":true,"dependencies":"bidon","cwd":"/deployjs","authentication":false,"credentials":{"type":"passphrase","username":null,"password":null,"sudo":null,"passphrase":"RaNDom7$!KEy"}}]}
+
