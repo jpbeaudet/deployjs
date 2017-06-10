@@ -7,6 +7,10 @@
 // Command line tool to handle deployment, server restart and dependencies
 // Change settings here to auto set teh CLI process
 //
+// allowed authentication type:  "passphrase", "sudo", "git" 
+// ttl = time cycle in milliseconds for the pid lookup (default to 100)
+//
+// base structure for configuring one or more process automation
 //========================================================
 var path = require('path'); 
 
@@ -15,20 +19,21 @@ var Config = {
 	verbose: true,
 	process: [
 		{
-			cmd:"node index.js -h",
+			cmd:"node index -h",
 			pid: null,
+			ttl:100,
 			status: false,
 			makefile: null,
 			reinstall : true,
-			dependencies: "bidon2",
+			dependencies: "bidon",
 			cwd: "/deployjs",
 			authentication: false,
 			credentials:{
-				type: null,
+				type: "passphrase" , 
 				username: null,
 				password: null,
 				sudo: null,
-				passphrase: null
+				passphrase: "RaNDom7$!KEy"
 			}
 		}
 	]

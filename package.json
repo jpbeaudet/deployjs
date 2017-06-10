@@ -22,7 +22,7 @@
     "jsonfile": "",
     "path": "",
     "process": "^0.11.10",
-    "ps-node": "",
-    "suppose": ""
+    "ps-node": "0.1.6",
+    "suppose": "^0.6.2"
   }
 }

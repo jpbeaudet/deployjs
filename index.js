@@ -30,14 +30,14 @@ var ps = require('ps-node');
 var path = require('path'); 
 var jsonfile = require('jsonfile')
 var process = require('process');
-//var suppose = require('suppose')
+var suppose = require('suppose')
 
 // globals
 /////////////////////////////////////////////////////////////////
 var CONFIG = null
 var PROC = {}
 var RECOVERY = path.join(__dirname, "/bin/recovery.js")
-
+var DEBUG = path.join(__dirname,'/bin/debug.txt')
 // helpers section
 /////////////////////////////////////////////////////////////////
 
@@ -239,11 +239,11 @@ function lookup(pid, id){
 });
 }
 // listen to process from pid
-function listen(pid, id){
+function listen(pid, id, obj){
 try {
 	setTimeout(function(){ 
 		lookup(pid, id)
-	}, 1000);
+	}, 100);
 
 }catch(err) {
 	throw new MyError(" listen() has failed for PID: "+pid);
@@ -262,53 +262,43 @@ catch (err) {
 }
 }
 function sudo(command, args, id, obj,cwd, cb){
-	suppose(command, args, {debug: fs.createWriteStream('/bin/debug.txt')})
-  .when(/name\: \([\w|\-]+\)[\s]*/).respond('awesome_package\n')
-  .when('version: (1.0.0) ').respond('0.0.1\n')
-  // response can also be the second argument to .when
-  .when('description: ', "It's an awesome package man!\n")
-  .when('entry point: (index.js) ').respond("\n")
-  .when('test command: ').respond('npm test\n')
-  .when('git repository: ').respond("\n")
-  .when('keywords: ').respond('awesome, cool\n')
-  .when('author: ').respond('JP Richardson\n')
-  .when('license: (ISC) ').respond('MIT\n')
-  .when('ok? (yes) ' ).respond('yes\n')
-.on('error', function(err){
-  console.log(err.message);
-})
-.end(function(code){
-  var packageFile = '/tmp/awesome/package.json';
-  fs.readFile(packageFile, function(err, data){
-    var packageObj = JSON.parse(data.toString());
-    console.log(packageObj.name); //'awesome_package'
-  })
+	var sudo = obj.process[id].credentials.sudo
+	suppose(command, args, {debug: fs.createWriteStream(DEBUG)})
+		.when('[sudo] password for ').respond(sudo)
+	.on('error', function(err){
+		console.log(err.message);
+	})
+	.end(function(code){
+		console.log('sudo mode exited with code: '+code);
+		return cb(process.pid)
 })
 }
-function git(command, args, id, obj,cwd, cb)){
-	suppose(command, args, {debug: fs.createWriteStream('/bin/debug.txt')})
+function git(command, args, id, obj,cwd, cb){
+	suppose(command, args, {debug: fs.createWriteStream(DEBUG)})
 	var username = obj.process[id].credentials.username
 	var password = obj.process[id].credentials.password
-	suppose(command, args, {debug: fs.createWriteStream('/bin/debug.txt')})
-		.when('Enter passphrase for key ').respond(passphrase.trim())
+	suppose(command, args, {debug: fs.createWriteStream(DEBUG)})
+		.when('Username for ').respond(username.trim())
+		.when('Password for ').respond(username.trim())
 	.on('error', function(err){
 		console.log(err.message);
 	})
 	.end(function(code){
-		console.log('passphrase exited with code: '+code);
-		return cb()
+		console.log('git mode exited with code: '+code);
+		
+		return cb(process.pid)
 	})
 }
-function passphrase(command, args, id, obj,cwd, cb)){
+function passphrase(command, args, id, obj,cwd, cb){
 	var passphrase = obj.process[id].credentials.passphrase
-	suppose(command, args, {debug: fs.createWriteStream('/bin/debug.txt')})
+	suppose(command, args, {debug: fs.createWriteStream(DEBUG)})
 		.when('Enter passphrase for key ').respond(passphrase.trim())
 	.on('error', function(err){
 		console.log(err.message);
 	})
 	.end(function(code){
-		console.log('passphrase exited with code: '+code);
-		return cb()
+		console.log('passphrase mode exited with code: '+code);
+		return cb(process.pid)
 	})
 }
 // use suppose to deal with credentials prompt
@@ -316,18 +306,21 @@ function startAuth(command, args, id, obj,cwd){
 	var type =obj.process[id].credentials.type
 	switch(type) {
 		case "git":
-			return git(command, args, id, obj, cwd, function(){
+			return git(command, args, id, obj, cwd, function(pid){
 				console.log("startAuth git mode is done ")
+				listen(pid, id, obj)
 				})
 		
 		case "sudo":
-			return sudo(command, args, id, obj, cwd, function(){
+			return sudo(command, args, id, obj, cwd, function(pid){
 				console.log("startAuth git mode is done ")
+				listen(pid, id, obj)
 				})
 			
 		case "passphrase":
-			return passphrase(command, args, id, obj, cwd, function(){
-				console.log("startAuth git mode is done ")
+			return passphrase(command, args, id, obj, cwd, function(pid){
+				console.log("startAuth passphrase mode is done ")
+				listen(pid, id, obj)
 				})
 			
 		default:
@@ -337,11 +330,11 @@ function startAuth(command, args, id, obj,cwd){
 
 // start to process and record pid
 function start(command, args, id, obj,cwd){
-
-try {
 	if (obj.process[id].authentication){
 		return startAuth(command, args, id, obj,cwd)
 	}
+try {
+
 	if(__dirname != cwd){
 		changeDirectory( path.normalize(cwd))
 		console.log('START TRIGGERED: '+path.normalize(cwd));
@@ -360,7 +353,7 @@ try {
 			if(err){
 				throw new MyError(err.message);
 			}
-			listen(cmd.pid, id)
+			listen(cmd.pid, id, obj)
 			console.log(`stdout: ${data}`);
 		})
 	});
@@ -405,6 +398,7 @@ try {
 		jsonfile.readFile(RECOVERY, function(err, obj) {
 			root = obj.root
 	this.cwd =  path.join(root, program.cwd) 
+	this.ttl= options.ttl || 100
 	this.pid = null
 	this.status = false
 	if(options.makefile){
@@ -466,6 +460,7 @@ program
 	.option('-d, --dependencies [String]', 'Array dependencies files', null)
 	.option('-r, --reinstall [mode]', 'Set to re-install dependencies ', false)
 	.option("-m, --makefile [path]", "path to a makefile to install dependencies", null)
+	.option("-t, --ttl [milliseconds]", "time in milliseconds for the pid lookup cycle", 100)
 	.action(function(options){
 		fs.stat(RECOVERY, function(err, stat) {
 			if(err == null) {
