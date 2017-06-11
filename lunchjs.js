@@ -1,7 +1,7 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
 // lunchjs.js
-// Version : 0.0.1
+// Version : 0.0.2
 // Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
@@ -359,7 +359,8 @@ try {
 
 	console.log(" start cmd: "+ '("'+command+'",'+args+')')
 	//const cmd = spawn(command, args);
-	const cmd = spawn(command, args, { detached: true});
+	var env = Object.create( process.env ) || Object.create(obj.process[id].env)
+	const cmd = spawn(command, args, { detached: true, env: env});
 	
 	if (obj.process[id].stdout != null){
 		var logStream = fs.createWriteStream(path.join(obj.root, obj.process[id].cwd, obj.process[id].stdout), {flags: 'a'});

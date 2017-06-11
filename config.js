@@ -1,7 +1,7 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
 // config.js
-// Version : 0.0.1
+// Version : 0.0.2
 // Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
@@ -23,11 +23,12 @@ var Config = {
 			cmd:"node lunchjs -h",
 			listen :true,
 			pid: null,
+			env:null,
 			ttl:100,
 			status: false,
 			makefile: null,
 			reinstall : true,
-			dependencies: "bidon",
+			dependencies: null,
 			cwd: "/deployjs",
 			stdout: "/bin/debug.txt",
 			stderr: "/bin/debug.txt",
