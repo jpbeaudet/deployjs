@@ -1,6 +1,6 @@
 # lunchjs
 ----
-##### Version 0.0.3
+##### Version 0.0.4
 ##### Author: Jean-Philippe Beaudet
 ##### License: GPL-3.0
 ##### Notes: 

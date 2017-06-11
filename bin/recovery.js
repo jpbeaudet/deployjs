@@ -1,1 +1,1 @@
-{"root":"C:\\cygwin64\\home\\user","os":"win32","verbose":true,"process":[{"cmd":"node lunchjs -h","listen":true,"pid":null,"env":null,"ttl":100,"status":false,"makefile":null,"reinstall":false,"dependencies":null,"cwd":"/deployjs","stdout":"/bin/debug.txt","stderr":"/bin/debug.txt","authentication":false,"credentials":{"type":null,"username":null,"password":null,"sudo":null,"passphrase":null}},{"stdout":null,"stderr":null,"listen":true,"cwd":"C:\\cygwin64\\home\\user\\","ttl":100,"pid":null,"status":false,"dependencies":null,"reinstall":false,"cmd":"node index -h"}]}
+

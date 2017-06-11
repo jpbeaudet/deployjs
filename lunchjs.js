@@ -1,7 +1,7 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
 // lunchjs.js
-// Version : 0.0.3
+// Version : 0.0.4
 // Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
@@ -60,26 +60,26 @@ MyError.prototype = Object.create(Error.prototype);
 MyError.prototype.constructor = MyError;
 
 function kill (pid, signal, callback) {
-    signal   = signal || 'SIGKILL';
-    callback = callback || function () {};
-    var killTree = true;
-    if(killTree) {
-        psTree(pid, function (err, children) {
-            [pid].concat(
-                children.map(function (p) {
-                    return p.PID;
-                })
-            ).forEach(function (tpid) {
-                try { process.kill(tpid, signal) }
-                catch (ex) { }
-            });
-            callback();
-        });
-    } else {
-        try { process.kill(pid, signal) }
-        catch (ex) { }
-        callback();
-    }
+	signal   = signal || 'SIGKILL';
+	callback = callback || function () {};
+	var killTree = true;
+	if(killTree) {
+		psTree(pid, function (err, children) {
+			[pid].concat(
+				children.map(function (p) {
+					return p.PID;
+				})
+			).forEach(function (tpid) {
+				try { process.kill(tpid, signal) }
+				catch (ex) { }
+			});
+			callback();
+		});
+	} else {
+		try { process.kill(pid, signal) }
+		catch (ex) { }
+		callback();
+	}
 };
 function deleteFolderRecursive(path, cb) {
 	if(VERBOSE){
@@ -343,19 +343,25 @@ function startAuth(command, args, id, obj,cwd){
 		case "git":
 			return git(command, args, id, obj, cwd, function(pid){
 				console.log("startAuth git mode is done ")
-				listen(pid, id, obj)
+				if(obj.process[id].listen){
+					listen(pid, id, obj)
+				}
 				})
 		
 		case "sudo":
 			return sudo(command, args, id, obj, cwd, function(pid){
 				console.log("startAuth git mode is done ")
-				listen(pid, id, obj)
+				if(obj.process[id].listen){
+					listen(pid, id, obj)
+				}
 				})
 			
 		case "passphrase":
 			return passphrase(command, args, id, obj, cwd, function(pid){
 				console.log("startAuth passphrase mode is done ")
-				listen(pid, id, obj)
+				if(obj.process[id].listen){
+					listen(pid, id, obj)
+				}
 				})
 			
 		default:
@@ -402,7 +408,9 @@ try {
 		obj.process[id].status = true
 		jsonfile.writeFile(RECOVERY, obj, function (err) {
 			if(err){
-				throw new MyError(APPNAME+" CRITICAL | Start command spawn failed with err: "+err.message);
+				kill(cmd.pid,'SIGKILL',function(){
+					throw new MyError(APPNAME+" CRITICAL | Start command spawn failed with err: "+err.message);
+				})
 			}
 			if(VERBOSE){
 				console.log("> "+obj.process[id].pid +' | log: ' + data+" \n > SUCCESS "+ 200);
@@ -427,15 +435,17 @@ try {
 			if(err){
 				throw new MyError(err.message);
 			}
-			//kill(obj.process[id].pid,'SIGKILL',function(){
+			kill(cmd.pid,'SIGKILL',function(){
 				if(VERBOSE){
-					console.log(APPNAME+" IMPORTANT | SPAWN "+obj.process[id].pid +" exited with code: "+ code);
+					console.log(APPNAME+" IMPORTANT | SPAWN "+cmd.pid +" exited with code: "+ code);
 				}
-			//})
+			})
 		})
 	});
 }catch(err) {
-	throw new MyError(APPNAME+" CRITICAL | Start command has failed for "+'("'+command+'",'+args+') with err: '+err);
+	kill(obj.process[id].pid ,'SIGKILL',function(){
+		throw new MyError(APPNAME+" CRITICAL | Start command has failed for "+'("'+command+'",'+args+') with err: '+err);
+	})
 }
 }
 
