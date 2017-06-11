@@ -1,6 +1,6 @@
 {
   "name": "lunchjs",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "nodejs CLI to launch multiple application and process, handle deployment, dependencies installation. It also listen to PID and will restart on process fail",
   "main": "index.js",
   "scripts": {
@@ -28,6 +28,7 @@
     "prettyjson": "^1.2.1",
     "process": "^0.11.10",
     "ps-node": "0.1.6",
+    "ps-tree": "^1.1.0",
     "suppose": "^0.6.2"
   }
 }

@@ -1,7 +1,7 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
 // lunchjs.js
-// Version : 0.0.2
+// Version : 0.0.3
 // Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
@@ -35,6 +35,7 @@ var process = require('process');
 var suppose = require('suppose')
 var moment = require("moment")
 var prettyjson = require('prettyjson');
+var psTree = require('ps-tree');
 
 // globals
 /////////////////////////////////////////////////////////////////
@@ -58,6 +59,28 @@ function MyError(message) {
 MyError.prototype = Object.create(Error.prototype);
 MyError.prototype.constructor = MyError;
 
+function kill (pid, signal, callback) {
+    signal   = signal || 'SIGKILL';
+    callback = callback || function () {};
+    var killTree = true;
+    if(killTree) {
+        psTree(pid, function (err, children) {
+            [pid].concat(
+                children.map(function (p) {
+                    return p.PID;
+                })
+            ).forEach(function (tpid) {
+                try { process.kill(tpid, signal) }
+                catch (ex) { }
+            });
+            callback();
+        });
+    } else {
+        try { process.kill(pid, signal) }
+        catch (ex) { }
+        callback();
+    }
+};
 function deleteFolderRecursive(path, cb) {
 	if(VERBOSE){
 		console.log(APPNAME+" IMPORTANT | deleting directories an files on path: "+path)
@@ -404,9 +427,11 @@ try {
 			if(err){
 				throw new MyError(err.message);
 			}
-			if(VERBOSE){
-				console.log(APPNAME+" IMPORTANT | SPAWN "+obj.process[id].pid +" exited with code: "+ code);
-			}
+			//kill(obj.process[id].pid,'SIGKILL',function(){
+				if(VERBOSE){
+					console.log(APPNAME+" IMPORTANT | SPAWN "+obj.process[id].pid +" exited with code: "+ code);
+				}
+			//})
 		})
 	});
 }catch(err) {
@@ -446,12 +471,7 @@ try {
 			}
 		}); 
 	}
-	if(options.dependencies){
-		this.dependencies = options.dependencies
-	}
-	if (options.dependencies == null){
-		this.dependencies = 'node_modules' 
-	}
+	this.dependencies = options.dependencies || null
 	this.reinstall = options.reinstall || false
 	if(options.cmd){
 		this.cmd = options.cmd
@@ -518,6 +538,8 @@ program
 							console.log(prettyjson.render(obj, opt));
 						}
 						})
+					}else{
+						console.log(APPNAME+" ADD ERROR | you must run setup or config command before adding process to be listened")
 					}
 				})
 			}else{
@@ -558,6 +580,7 @@ program
 					keysColor: 'green',
 					noColor: true
 				};
+				
 				PROC = new deploy(CONFIG)
 				if(VERBOSE){
 					console.log(APPNAME+' config had been read with:' )
@@ -662,11 +685,15 @@ program
 			
 			if(err == null) {
 				jsonfile.readFile(RECOVERY, function(err, obj) {
-					var opt = {
-						keysColor: 'green',
-						noColor: true
-					};
-					console.log(prettyjson.render(obj, opt));
+					if(err == null){
+						var opt = {
+							keysColor: 'green',
+							noColor: true
+						};
+						console.log(prettyjson.render(obj, opt));
+					}else{
+						console.log(APPNAME+' IMPORTANT | process configuration object is empty, please run : node launchjs setup or synchronise a configuration file.' )
+					}
 				})
 			}
 			})
@@ -696,7 +723,7 @@ program
 							console.log(prettyjson.render(obj, opt));
 						})
 					}else{
-						throw new MyError(APPNAME+'SAVE ERROR | you must have a valid process configuration to save');
+						console.log(APPNAME+'SAVE ERROR | you must have a valid process configuration to save');
 					}
 				})
 			}
