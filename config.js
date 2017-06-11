@@ -17,16 +17,20 @@ var path = require('path');
 var Config = {
 	root: path.normalize(path.dirname(__dirname)),
 	verbose: true,
+	os: null,
 	process: [
 		{
-			cmd:"node index -h",
+			cmd:"node lunchjs -h",
+			listen :true,
 			pid: null,
 			ttl:100,
 			status: false,
 			makefile: null,
-			reinstall : false,
-			dependencies: null,
+			reinstall : true,
+			dependencies: "bidon",
 			cwd: "/deployjs",
+			stdout: "/bin/debug.txt",
+			stderr: "/bin/debug.txt",
 			authentication: false,
 			credentials:{
 				type: null , 

@@ -13,7 +13,7 @@
 	var childProcess = require("child_process");
 	var oldSpawn = childProcess.spawn;
 	function mySpawn() {
-		console.log(APPNAME+' | SPAWN | spawn called *');
+		console.log(APPNAME+' | SPAWN | reports: ');
 		console.log(arguments);
 
 		var result = oldSpawn.apply(this, arguments);
@@ -246,6 +246,7 @@ function listen(pid, id, obj){
 try {
 	setTimeout(function(){ 
 		lookup(pid, id)
+		console.log("> ");
 	}, 100);
 
 }catch(err) {
@@ -344,24 +345,38 @@ try {
 	
 	const spawn = require('child_process').spawn;
 
+
 	console.log(" start cmd: "+ '("'+command+'",'+args+')')
 	//const cmd = spawn(command, args);
 	const cmd = spawn(command, args, { detached: true});
+	
+	if (obj.process[id].stdout != null){
+		var logStream = fs.createWriteStream(path.join(obj.root, obj.process[id].cwd, obj.process[id].stdout), {flags: 'a'});
+		cmd .stdout.pipe(logStream)
+	}
+	if (obj.process[id].stderr != null){
+		var logStream = fs.createWriteStream(path.join(obj.root, obj.process[id].cwd, obj.process[id].stderr), {flags: 'a'});
+		cmd.stderr.pipe(logStream);
+	}
+			
 	cmd.stdout.on('data', (data) => {
-		console.log(" process for "+cmd+" is PID: "+cmd.pid)
+		console.log(APPNAME+" IMPORTANT | process for "+cmd+" is PID: "+cmd.pid)
 		obj.process[id].pid = cmd.pid
 		obj.process[id].status = true
 		jsonfile.writeFile(RECOVERY, obj, function (err) {
 			if(err){
 				throw new MyError(APPNAME+" CRITICAL | Start command spawn failed with err: "+err.message);
 			}
-			listen(cmd.pid, id, obj)
-			//console.log(`stdout: ${data}`);
+			console.log("> "+obj.process[id].pid +' | log: ' + data+" \n > SUCCESS "+ 200);
+			if(obj.process[id].listen == true){
+				listen(cmd.pid, id, obj)
+			}
+			
 		})
 	});
 
 	cmd.stderr.on('data', (data) => {
-		console.log(`stderr: ${data}`);
+		console.log("> "+obj.process[id].pid +' | err: ' + data+" \n > ERROR "+ 403);
 	});
 
 	cmd.on('close', (code) => {
@@ -371,7 +386,7 @@ try {
 			if(err){
 				throw new MyError(err.message);
 			}
-			//console.log(APPNAME+" IMPORTANT | SPAWN exited with code: "+ code);
+			console.log(APPNAME+" IMPORTANT | SPAWN "+obj.process[id].pid +" exited with code: "+ code);
 		})
 	});
 }catch(err) {
@@ -384,6 +399,7 @@ try {
 function deploy(program){
 try {
 	this.root = path.normalize(program.root) || path.normalize(path.dirname(__dirname))
+	this.os = process.platform
 	this.verbose = program.verbose
 	this.process = program.process || []
 }catch(err) {
@@ -398,7 +414,10 @@ try {
 		if(err == null) {
 		jsonfile.readFile(RECOVERY, function(err, obj) {
 			root = obj.root
-	this.cwd =  path.join(root, program.cwd) 
+	this.stdout = options.stdout || null
+	this.stderr = options.stderr || null
+	this.listen = options.listen || true
+	this.cwd =  path.join(root, options.cwd) || path.normalize(root) 
 	this.ttl= options.ttl || 100
 	this.pid = null
 	this.status = false
@@ -425,7 +444,7 @@ try {
 			this.dependencies.push('node_modules')
 		}
 	}
-	this.reinstall = options.reinstall
+	this.reinstall = options.reinstall || false
 	if(options.cmd){
 		this.cmd = options.cmd
 	}else{
@@ -447,7 +466,6 @@ try {
 program
 	.version('0.0.1')
 	.description('Welcome to lunchjs commandline tool for ligth process boostrapping ')
-	.option('-v, --verbose', 'Set to verbose ')
 	
 // node lunchjs add -c "node index -h"
 program
@@ -461,6 +479,7 @@ program
 	.option('-r, --reinstall [mode]', 'Set to re-install dependencies ', false)
 	.option("-m, --makefile [path]", "path to a makefile to install dependencies", null)
 	.option("-t, --ttl [milliseconds]", "time in milliseconds for the pid lookup cycle", 100)
+	.option("-l, --listen [boolean]", "Set the process to be listened to and boostrapped, make false to run only once", true)
 	.option('-v, --verbose', 'Set to verbose ')
 	.action(function(options){
 		console.log("*********************************")
