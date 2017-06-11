@@ -25,6 +25,7 @@
     "jsonfile": "",
     "moment": "^2.18.1",
     "path": "",
+    "prettyjson": "^1.2.1",
     "process": "^0.11.10",
     "ps-node": "0.1.6",
     "suppose": "^0.6.2"

@@ -13,9 +13,10 @@
 	var childProcess = require("child_process");
 	var oldSpawn = childProcess.spawn;
 	function mySpawn() {
-		console.log(APPNAME+' | SPAWN | reports: ');
-		console.log(arguments);
-
+		if(VERBOSE){
+			console.log(APPNAME+' | SPAWN | reports: ');
+			console.log(arguments);
+		}
 		var result = oldSpawn.apply(this, arguments);
 		return result;
 	}
@@ -33,6 +34,7 @@ var jsonfile = require('jsonfile')
 var process = require('process');
 var suppose = require('suppose')
 var moment = require("moment")
+var prettyjson = require('prettyjson');
 
 // globals
 /////////////////////////////////////////////////////////////////
@@ -57,10 +59,14 @@ MyError.prototype = Object.create(Error.prototype);
 MyError.prototype.constructor = MyError;
 
 function deleteFolderRecursive(path, cb) {
-	console.log(APPNAME+" IMPORTANT | deleting directories an files on path: "+path)
+	if(VERBOSE){
+		console.log(APPNAME+" IMPORTANT | deleting directories an files on path: "+path)
+	}
 	if( fs.existsSync(path) ) {
 		fs.readdirSync(path).forEach(function(file,index){
-			console.log(APPNAME+" Deleting... "+path+"/" +file)
+			if(VERBOSE){
+				console.log(APPNAME+" Deleting... "+path+"/" +file)
+			}
 		var curPath = path + "/" + file;
 		if(fs.lstatSync(curPath).isDirectory()) { // recurse
 			deleteFolderRecursive(curPath,function(){
@@ -230,13 +236,16 @@ function lookup(pid, id){
 		}
 		var process = resultList[ 0 ];
 		if( process ){
-			console.log("\n")
-			console.log( APPNAME+' | Lookup | PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
-
+			if(VERBOSE){
+				console.log("\n")
+				console.log( APPNAME+' | Lookup | PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
+			}
 			return true
 		}
 		else {
-			console.log(APPNAME+' IMPORTANT | No such process found! PID: '+pid+' starting bootstrap... ');
+			if(VERBOSE){
+				console.log(APPNAME+' IMPORTANT | No such process found! PID: '+pid+' starting bootstrap... ');
+			}
 			return bootstrap(id)
 		}
 });
@@ -340,7 +349,9 @@ try {
 
 	if(__dirname != cwd){
 		changeDirectory( path.normalize(cwd))
-		console.log('START TRIGGERED: '+path.normalize(cwd));
+		if(VERBOSE){
+			console.log('Directory changed: '+process.cwd());
+		}
 	}
 	
 	const spawn = require('child_process').spawn;
@@ -360,14 +371,18 @@ try {
 	}
 			
 	cmd.stdout.on('data', (data) => {
-		console.log(APPNAME+" IMPORTANT | process for "+cmd+" is PID: "+cmd.pid)
+		if(VERBOSE){
+			console.log(APPNAME+" IMPORTANT | process for "+cmd+" is PID: "+cmd.pid)
+		}
 		obj.process[id].pid = cmd.pid
 		obj.process[id].status = true
 		jsonfile.writeFile(RECOVERY, obj, function (err) {
 			if(err){
 				throw new MyError(APPNAME+" CRITICAL | Start command spawn failed with err: "+err.message);
 			}
-			console.log("> "+obj.process[id].pid +' | log: ' + data+" \n > SUCCESS "+ 200);
+			if(VERBOSE){
+				console.log("> "+obj.process[id].pid +' | log: ' + data+" \n > SUCCESS "+ 200);
+			}
 			if(obj.process[id].listen == true){
 				listen(cmd.pid, id, obj)
 			}
@@ -376,7 +391,9 @@ try {
 	});
 
 	cmd.stderr.on('data', (data) => {
-		console.log("> "+obj.process[id].pid +' | err: ' + data+" \n > ERROR "+ 403);
+		if(VERBOSE){
+			console.log("> "+obj.process[id].pid +' | err: ' + data+" \n > ERROR "+ 403);
+		}
 	});
 
 	cmd.on('close', (code) => {
@@ -386,7 +403,9 @@ try {
 			if(err){
 				throw new MyError(err.message);
 			}
-			console.log(APPNAME+" IMPORTANT | SPAWN "+obj.process[id].pid +" exited with code: "+ code);
+			if(VERBOSE){
+				console.log(APPNAME+" IMPORTANT | SPAWN "+obj.process[id].pid +" exited with code: "+ code);
+			}
 		})
 	});
 }catch(err) {
@@ -409,15 +428,7 @@ try {
 
 function watcher(options, root){
 try {
-	//var root;
-	//fs.stat(RECOVERY, function(err, stat) {
-		//if(err == null) {
-		//jsonfile.readFile(RECOVERY, function(err, obj) {
-			//if(err){
-				//console.log(err)
-			//}
-			//console.log(obj)
-			//root = obj.root
+
 	this.stdout = options.stdout || null
 	this.stderr = options.stderr || null
 	this.listen = options.listen || true
@@ -433,17 +444,9 @@ try {
 				throw new MyError(APPNAME+" CRITICAL | makeFile path is not valid file: "+options.makefile);
 			}
 		}); 
-		
 	}
 	if(options.dependencies){
-		//fs.stat(options.dependencies, function(err, stat) {
-			//if(err == null) {
-				this.dependencies = options.dependencies
-			//}else{
-				//throw new MyError(APPNAME+" WARNING | Dependencies path is not valid path: "+options.dependencies);
-			//}
-		//}); 
-		
+		this.dependencies = options.dependencies
 	}
 	if (options.dependencies == null){
 		this.dependencies = 'node_modules' 
@@ -454,24 +457,19 @@ try {
 	}else{
 		throw new MyError(APPNAME+" CRITICAL | You fill the command value in config or in add command ");
 	}
-			
-			//})
-			//}
-		//})
-	
+
 }catch(err) {
 		throw new MyError(APPNAME+" CRITICAL | process constructor has failed");
 }
 }
 
-
-// command-line options section
+// PROGRAM commands
 /////////////////////////////////////////////////////////////////
 program
 	.version('0.0.1')
 	.description('Welcome to lunchjs commandline tool for ligth process boostrapping ')
 	
-// node lunchjs add -c "node index -h" -r true -d "bidon" -l true
+// node lunchjs add -c "node index -h" -v
 program
 	.command('add')
 	.description('add a new process to be watched')
@@ -498,23 +496,26 @@ program
 		console.log("*            Adding  ...        *")
 		console.log("*                               *")
 		console.log("*********************************")
-		if (options.verbose){
-			VERBOSE = true
-		}
-
+		VERBOSE = (options.verbose != null)
 		fs.stat(RECOVERY, function(err, stat) {
 			if(err == null) {
 				jsonfile.readFile(RECOVERY, function(err, obj) {
 					if (obj != null){
-						//console.log(options)
 						var p = new watcher(options, obj.root)
-						console.log("new command p : "+JSON.stringify(p))
 						obj.process.push(p)
 						jsonfile.writeFile(RECOVERY, obj, function (err) {
 							if(err){
 								throw new MyError("writing new process has failed");
 							}
-							console.log(APPNAME+" ADD | new command succesfully added : "+JSON.stringify(obj))
+						var opt = {
+							keysColor: 'green',
+							noColor: true
+							
+						};
+						if(VERBOSE){
+							console.log(APPNAME+' ADD | new command succesfully added :' )
+							console.log(prettyjson.render(obj, opt));
+						}
 						})
 					}
 				})
@@ -524,7 +525,7 @@ program
 		})
 	});
 	
-// node lunchjs config -p "./config.js"
+// node lunchjs config -p "./config.js" -v
 program
 	.command('config')
 	.description('use a config file for the deployment')
@@ -541,13 +542,10 @@ program
 		console.log("*                               *")
 		console.log("* Read process from config file *")
 		console.log("*                               *")
-		console.log("*            Reading...         *")
+		console.log("*         Configuring...        *")
 		console.log("*                               *")
 		console.log("*********************************")
-		
-		if (options.verbose){
-			VERBOSE = true
-		}
+		VERBOSE = (options.verbose != null)
 		var config_path= path.join( __dirname,"/config.js")
 		if(options && options.path){
 			 config_path = options.path
@@ -555,8 +553,15 @@ program
 		fs.stat(config_path, function(err, stat) {
 			if(err == null) {
 				CONFIG = require(config_path)
-				console.log(APPNAME+' config had been read with:'+  JSON.stringify(CONFIG));
+				var opt = {
+					keysColor: 'green',
+					noColor: true
+				};
 				PROC = new deploy(CONFIG)
+				if(VERBOSE){
+					console.log(APPNAME+' config had been read with:' )
+					console.log(prettyjson.render(PROC, opt));
+				}
 			}else{
 				throw new MyError("config file path is invalid: "+options.path);
 			}
@@ -596,9 +601,7 @@ program
 		console.log("* Starting processes ...        *")
 		console.log("*                               *")
 		console.log("*********************************")
-		if (options.verbose){
-			VERBOSE = true
-		}
+		VERBOSE = (options.verbose != null)
 		fs.stat(RECOVERY, function(err, stat) {
 			
 			if(err == null) {
@@ -615,7 +618,7 @@ program
 		})
 	})
 	
-// node lunchjs setup
+// node lunchjs setup -v
 program
 	.command('setup')
 	.description('add a new process to be watched')
@@ -632,18 +635,72 @@ program
 		console.log("*    New process object ready   *")
 		console.log("*                               *")
 		console.log("*********************************")
+		VERBOSE = (options.verbose != null)
 		PROC = new deploy(options)
 		jsonfile.writeFile(RECOVERY, PROC, function (err) {
 			if(err){
 					throw new MyError(err.message);
 				}
-
-			console.log(APPNAME+' process object refreshed: '+JSON.stringify(PROC))
-
+		var opt = {
+			keysColor: 'green',
+			noColor: true
+		};
+		if(VERBOSE){
+			console.log(APPNAME+' process object refreshed:' )
+			console.log(prettyjson.render(PROC, opt));
+		}
+		})
+	})
+	
+// node lunchjs ls
+program
+	.command('ls')
+	.description('get current process configurations')
+	.action(function(options){
+		fs.stat(RECOVERY, function(err, stat) {
+			
+			if(err == null) {
+				jsonfile.readFile(RECOVERY, function(err, obj) {
+					var opt = {
+						keysColor: 'green',
+						noColor: true
+					};
+					console.log(prettyjson.render(obj, opt));
+				})
+			}
+			})
+	})
+	
+// node lunchjs save
+program
+	.command('save')
+	.option('-p, --path', 'path to save file ')
+	.description('save current process configuration')
+	.action(function(options){
+		var save = options.path || path.join(__dirname+'/bin/save.js')
+		fs.stat(RECOVERY, function(err, stat) {
+			console.log(save)
+			if(err == null) {
+				jsonfile.readFile(RECOVERY, function(err, obj) {
+					if (obj != null){
+						var opt = {
+							keysColor: 'green',
+							noColor: true
+						};
+						jsonfile.writeFile(save, obj, function (err) {
+							if(err){
+								throw new MyError(err.message);
+							}
+							console.log(APPNAME+'SAVE SUCCESS saving process configuration to: ' +save)
+							console.log(prettyjson.render(obj, opt));
+						})
+					}else{
+						throw new MyError(APPNAME+'SAVE ERROR | you must have a valid process configuration to save');
+					}
+				})
+			}
 		})
 	})
 	// parse the args
+	/////////////////////////////////////////////////////////////////////////
 	program.parse(process.argv);
-	if(program.verbose){
-		VERBOSE = true
-	}

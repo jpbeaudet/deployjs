@@ -1,1 +1,181 @@
 
+
+  Usage: lunchjs [options] [command]
+
+
+  Commands:
+
+    add [options]      add a new process to be watched
+    config [options]   use a config file for the deployment
+    start [options]    start all process 
+    setup [options]    add a new process to be watched
+    ls                 get current process configurations
+    save [options]     save current process configuration
+
+  Welcome to lunchjs commandline tool for ligth process boostrapping 
+
+  Options:
+
+    -h, --help     output usage information
+    -V, --version  output the version number
+
+
+  Usage: lunchjs [options] [command]
+
+
+  Commands:
+
+    add [options]      add a new process to be watched
+    config [options]   use a config file for the deployment
+    start [options]    start all process 
+    setup [options]    add a new process to be watched
+    ls                 get current process configurations
+    save [options]     save current process configuration
+
+  Welcome to lunchjs commandline tool for ligth process boostrapping 
+
+  Options:
+
+    -h, --help     output usage information
+    -V, --version  output the version number
+
+
+  Usage: lunchjs [options] [command]
+
+
+  Commands:
+
+    add [options]      add a new process to be watched
+    config [options]   use a config file for the deployment
+    start [options]    start all process 
+    setup [options]    add a new process to be watched
+    ls                 get current process configurations
+    save [options]     save current process configuration
+
+  Welcome to lunchjs commandline tool for ligth process boostrapping 
+
+  Options:
+
+    -h, --help     output usage information
+    -V, --version  output the version number
+
+
+  Usage: lunchjs [options] [command]
+
+
+  Commands:
+
+    add [options]      add a new process to be watched
+    config [options]   use a config file for the deployment
+    start [options]    start all process 
+    setup [options]    add a new process to be watched
+    ls                 get current process configurations
+    save [options]     save current process configuration
+
+  Welcome to lunchjs commandline tool for ligth process boostrapping 
+
+  Options:
+
+    -h, --help     output usage information
+    -V, --version  output the version number
+
+
+  Usage: lunchjs [options] [command]
+
+
+  Commands:
+
+    add [options]      add a new process to be watched
+    config [options]   use a config file for the deployment
+    start [options]    start all process 
+    setup [options]    add a new process to be watched
+    ls                 get current process configurations
+    save [options]     save current process configuration
+
+  Welcome to lunchjs commandline tool for ligth process boostrapping 
+
+  Options:
+
+    -h, --help     output usage information
+    -V, --version  output the version number
+
+
+  Usage: lunchjs [options] [command]
+
+
+  Commands:
+
+    add [options]      add a new process to be watched
+    config [options]   use a config file for the deployment
+    start [options]    start all process 
+    setup [options]    add a new process to be watched
+    ls                 get current process configurations
+    save [options]     save current process configuration
+
+  Welcome to lunchjs commandline tool for ligth process boostrapping 
+
+  Options:
+
+    -h, --help     output usage information
+    -V, --version  output the version number
+
+
+  Usage: lunchjs [options] [command]
+
+
+  Commands:
+
+    add [options]      add a new process to be watched
+    config [options]   use a config file for the deployment
+    start [options]    start all process 
+    setup [options]    add a new process to be watched
+    ls                 get current process configurations
+    save [options]     save current process configuration
+
+  Welcome to lunchjs commandline tool for ligth process boostrapping 
+
+  Options:
+
+    -h, --help     output usage information
+    -V, --version  output the version number
+
+
+  Usage: lunchjs [options] [command]
+
+
+  Commands:
+
+    add [options]      add a new process to be watched
+    config [options]   use a config file for the deployment
+    start [options]    start all process 
+    setup [options]    add a new process to be watched
+    ls                 get current process configurations
+    save [options]     save current process configuration
+
+  Welcome to lunchjs commandline tool for ligth process boostrapping 
+
+  Options:
+
+    -h, --help     output usage information
+    -V, --version  output the version number
+
+
+  Usage: lunchjs [options] [command]
+
+
+  Commands:
+
+    add [options]      add a new process to be watched
+    config [options]   use a config file for the deployment
+    start [options]    start all process 
+    setup [options]    add a new process to be watched
+    ls                 get current process configurations
+    save [options]     save current process configuration
+
+  Welcome to lunchjs commandline tool for ligth process boostrapping 
+
+  Options:
+
+    -h, --help     output usage information
+    -V, --version  output the version number
+
