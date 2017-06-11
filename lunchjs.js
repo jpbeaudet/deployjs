@@ -1,7 +1,7 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
 // lunchjs.js
-// Version : 0.0.4
+// Version : 0.0.5
 // Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
@@ -21,6 +21,7 @@
 		return result;
 	}
 	childProcess.spawn = mySpawn;
+	
 })();
 
 // dependencies
@@ -59,6 +60,8 @@ function MyError(message) {
 MyError.prototype = Object.create(Error.prototype);
 MyError.prototype.constructor = MyError;
 
+
+
 function kill (pid, signal, callback) {
 	signal   = signal || 'SIGKILL';
 	callback = callback || function () {};
@@ -73,11 +76,13 @@ function kill (pid, signal, callback) {
 				try { process.kill(tpid, signal) }
 				catch (ex) { }
 			});
+			console.log(APPNAME+" IMPORTANT | kill routine done for pid: "+pid)
 			callback();
 		});
 	} else {
 		try { process.kill(pid, signal) }
 		catch (ex) { }
+		console.log(APPNAME+" IMPORTANT | kill routine done for pid: "+pid)
 		callback();
 	}
 };
@@ -390,7 +395,7 @@ try {
 	//const cmd = spawn(command, args);
 	var env = Object.create( process.env ) || Object.create(obj.process[id].env)
 	const cmd = spawn(command, args, { detached: true, env: env});
-	
+
 	if (obj.process[id].stdout != null){
 		var logStream = fs.createWriteStream(path.join(obj.root, obj.process[id].cwd, obj.process[id].stdout), {flags: 'a'});
 		cmd .stdout.pipe(logStream)
@@ -399,7 +404,14 @@ try {
 		var logStream = fs.createWriteStream(path.join(obj.root, obj.process[id].cwd, obj.process[id].stderr), {flags: 'a'});
 		cmd.stderr.pipe(logStream);
 	}
-			
+
+cmd.stdout.on('keypress', function (ch, key) {
+	  console.log('got "keypress"', key);
+  if (key && key.ctrl && key.name == 'c') {
+	  console.log("ping!!!!!")
+    process.exit();
+  }
+});
 	cmd.stdout.on('data', (data) => {
 		if(VERBOSE){
 			console.log(APPNAME+" IMPORTANT | process for "+cmd+" is PID: "+cmd.pid)
@@ -421,6 +433,14 @@ try {
 			
 		})
 	});
+
+	cmd.on("exit",function(){
+			kill(cmd.pid,'SIGKILL',function(code, signal){
+				if(VERBOSE){
+					console.log(APPNAME+" IMPORTANT | SPAWN  exit() "+cmd.pid +" exited with Ctrl-C" );
+				}
+			})
+	})
 
 	cmd.stderr.on('data', (data) => {
 		if(VERBOSE){
@@ -739,6 +759,7 @@ program
 			}
 		})
 	})
+
 	// parse the args
 	/////////////////////////////////////////////////////////////////////////
 	program.parse(process.argv);
