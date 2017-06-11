@@ -398,22 +398,26 @@ try {
 /////////////////////////////////////////////////////////////////
 function deploy(program){
 try {
-	this.root = path.normalize(program.root) || path.normalize(path.dirname(__dirname))
-	this.os = process.platform
-	this.verbose = program.verbose
+	this.root = program.root || path.normalize(path.dirname(__dirname))
+	this.os = process.platform 
+	this.verbose = program.verbose || false
 	this.process = program.process || []
 }catch(err) {
 	throw new MyError(APPNAME+" CRITICAL | setup constructor has failed err: "+err);
 }
 }
 
-function watcher(options){
+function watcher(options, root){
 try {
-	var root;
-	fs.stat(RECOVERY, function(err, stat) {
-		if(err == null) {
-		jsonfile.readFile(RECOVERY, function(err, obj) {
-			root = obj.root
+	//var root;
+	//fs.stat(RECOVERY, function(err, stat) {
+		//if(err == null) {
+		//jsonfile.readFile(RECOVERY, function(err, obj) {
+			//if(err){
+				//console.log(err)
+			//}
+			//console.log(obj)
+			//root = obj.root
 	this.stdout = options.stdout || null
 	this.stderr = options.stderr || null
 	this.listen = options.listen || true
@@ -432,17 +436,17 @@ try {
 		
 	}
 	if(options.dependencies){
-		fs.stat(options.dependencies, function(err, stat) {
-			if(err == null) {
+		//fs.stat(options.dependencies, function(err, stat) {
+			//if(err == null) {
 				this.dependencies = options.dependencies
-			}else{
-				throw new MyError(APPNAME+" CRITICAL | Dependencies path is not valid path: "+options.dependencies);
-			}
-		}); 
+			//}else{
+				//throw new MyError(APPNAME+" WARNING | Dependencies path is not valid path: "+options.dependencies);
+			//}
+		//}); 
 		
-		if (options.dependencies ==null && options.makefile == false){
-			this.dependencies.push('node_modules')
-		}
+	}
+	if (options.dependencies == null){
+		this.dependencies = 'node_modules' 
 	}
 	this.reinstall = options.reinstall || false
 	if(options.cmd){
@@ -450,10 +454,10 @@ try {
 	}else{
 		throw new MyError(APPNAME+" CRITICAL | You fill the command value in config or in add command ");
 	}
-				
-			})
-			}
-		})
+			
+			//})
+			//}
+		//})
 	
 }catch(err) {
 		throw new MyError(APPNAME+" CRITICAL | process constructor has failed");
@@ -467,7 +471,7 @@ program
 	.version('0.0.1')
 	.description('Welcome to lunchjs commandline tool for ligth process boostrapping ')
 	
-// node lunchjs add -c "node index -h"
+// node lunchjs add -c "node index -h" -r true -d "bidon" -l true
 program
 	.command('add')
 	.description('add a new process to be watched')
@@ -475,7 +479,7 @@ program
 	.option('-r, --root <path>', 'change the rootdirectory', path.resolve(__dirname))
 	.option('-C, --cwd <path>', 'change the working directory', "/")
 	.option('-c, --cmd [String]', 'Array of command and args', null)
-	.option('-d, --dependencies [String]', 'Array dependencies files', null)
+	.option('-d, --dependencies [String]', 'Dependencies file', null)
 	.option('-r, --reinstall [mode]', 'Set to re-install dependencies ', false)
 	.option("-m, --makefile [path]", "path to a makefile to install dependencies", null)
 	.option("-t, --ttl [milliseconds]", "time in milliseconds for the pid lookup cycle", 100)
@@ -502,7 +506,8 @@ program
 			if(err == null) {
 				jsonfile.readFile(RECOVERY, function(err, obj) {
 					if (obj != null){
-						var p = new watcher(options)
+						//console.log(options)
+						var p = new watcher(options, obj.root)
 						console.log("new command p : "+JSON.stringify(p))
 						obj.process.push(p)
 						jsonfile.writeFile(RECOVERY, obj, function (err) {
@@ -610,30 +615,33 @@ program
 		})
 	})
 	
-// node lunchjs setup -v
+// node lunchjs setup
 program
 	.command('setup')
 	.description('add a new process to be watched')
+	.option('-rr, --root', 'Set new root file ', path.normalize(path.dirname(__dirname)))
 	.option('-v, --verbose', 'Set to verbose ')
 	.action(function(options){
+		console.log("*********************************")
+		console.log("*            Lunchjs            *")
+		console.log("*                               *")
+		console.log("* Author: Jean-Philippe Beaudet *")
+		console.log("* Version: 0.0.1                *")
+		console.log("* License:GPL-3.0               *")
+		console.log("*                               *")
+		console.log("*    New process object ready   *")
+		console.log("*                               *")
+		console.log("*********************************")
 		PROC = new deploy(options)
-		fs.stat(RECOVERY, function(err, stat) {
-			if(err == null) {
-				jsonfile.writeFile(RECOVERY, PROC, function (err) {
-					if(err){
+		jsonfile.writeFile(RECOVERY, PROC, function (err) {
+			if(err){
 					throw new MyError(err.message);
 				}
-				//if (program.verbose){
-					//console.log('PROC created: '+JSON.stringify(PROC))
-				//}
-				})
-			}else{
-				throw new MyError("config file path is invalid: "+RECOVERY);
-			}
-		});
-		
+
+			console.log(APPNAME+' process object refreshed: '+JSON.stringify(PROC))
+
+		})
 	})
-	
 	// parse the args
 	program.parse(process.argv);
 	if(program.verbose){
