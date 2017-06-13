@@ -1,7 +1,7 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
 // config.js
-// Version : 0.0.5
+// Version : 0.0.6
 // Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
@@ -29,7 +29,7 @@ var Config = {
 			makefile: null,
 			reinstall : false,
 			dependencies: null,
-			cwd: "/",
+			cwd: "/deployjs",
 			stdout: "/bin/debug.txt",
 			stderr: "/bin/debug.txt",
 			authentication: false,

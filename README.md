@@ -1,6 +1,6 @@
 # lunchjs
 ----
-##### Version 0.0.4
+##### Version 0.0.6
 ##### Author: Jean-Philippe Beaudet
 ##### License: GPL-3.0
 ##### Notes: 
@@ -56,6 +56,8 @@ var Config = {
 module.exports = Config;
 
 ````
+
+NOTA: the path must be valis for stout and stderr files, you can also call them null to ignore. reading config file will output current directories
 
 ##### then
 ````

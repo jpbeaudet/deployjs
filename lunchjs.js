@@ -1,7 +1,7 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
 // lunchjs.js
-// Version : 0.0.5
+// Version : 0.0.6
 // Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
@@ -255,7 +255,30 @@ try {
 	console.log(APPNAME+' CRITICAL | chdir: ' + err);
 }
 }
+//lookup to pid and return a boolean
+function findAndKill(command,args, id, cb){
+	ps.lookup({
+	command: comamnds,
+	arguments: args.join(","),
+	}, function(err, resultList ) {
+	if (err) {
+		throw new Error( err );
+	}
+ 
+	resultList.forEach(function( process ){
+		if( process ){
+			//lookup(process.pid, id)
+			console.log( 'KILLING: PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
+			kill(process.pid,'SIGKILL',function(){
+				
+			
+			})
+        }
+    });
+    cb()
+});
 
+}
 //lookup to pid and return a boolean
 function lookup(pid, id){
 		ps.lookup({ pid: pid}, function(err, resultList ) {
@@ -404,14 +427,13 @@ try {
 		var logStream = fs.createWriteStream(path.join(obj.root, obj.process[id].cwd, obj.process[id].stderr), {flags: 'a'});
 		cmd.stderr.pipe(logStream);
 	}
-
-cmd.stdout.on('keypress', function (ch, key) {
-	  console.log('got "keypress"', key);
-  if (key && key.ctrl && key.name == 'c') {
-	  console.log("ping!!!!!")
-    process.exit();
-  }
-});
+	cmd.stdout.on('keypress', function (ch, key) {
+		console.log('got "keypress"', key);
+		if (key && key.ctrl && key.name == 'c') {
+			console.log("ping!!!!!")
+			process.exit();
+		}
+	});
 	cmd.stdout.on('data', (data) => {
 		if(VERBOSE){
 			console.log(APPNAME+" IMPORTANT | process for "+cmd+" is PID: "+cmd.pid)
@@ -420,7 +442,8 @@ cmd.stdout.on('keypress', function (ch, key) {
 		obj.process[id].status = true
 		jsonfile.writeFile(RECOVERY, obj, function (err) {
 			if(err){
-				kill(cmd.pid,'SIGKILL',function(){
+				findAndKill(command, args, id, function(){
+				//kill(cmd.pid,'SIGKILL',function(){
 					throw new MyError(APPNAME+" CRITICAL | Start command spawn failed with err: "+err.message);
 				})
 			}
@@ -435,7 +458,8 @@ cmd.stdout.on('keypress', function (ch, key) {
 	});
 
 	cmd.on("exit",function(){
-			kill(cmd.pid,'SIGKILL',function(code, signal){
+		findAndKill(command, args, id, function(){
+			//kill(cmd.pid,'SIGKILL',function(code, signal){
 				if(VERBOSE){
 					console.log(APPNAME+" IMPORTANT | SPAWN  exit() "+cmd.pid +" exited with Ctrl-C" );
 				}
@@ -455,7 +479,8 @@ cmd.stdout.on('keypress', function (ch, key) {
 			if(err){
 				throw new MyError(err.message);
 			}
-			kill(cmd.pid,'SIGKILL',function(){
+			findAndKill(command, args, id, function(){
+			//kill(cmd.pid,'SIGKILL',function(){
 				if(VERBOSE){
 					console.log(APPNAME+" IMPORTANT | SPAWN "+cmd.pid +" exited with code: "+ code);
 				}
@@ -463,7 +488,8 @@ cmd.stdout.on('keypress', function (ch, key) {
 		})
 	});
 }catch(err) {
-	kill(obj.process[id].pid ,'SIGKILL',function(){
+	findAndKill(command,args, id, function(){
+	//kill(obj.process[id].pid ,'SIGKILL',function(){
 		throw new MyError(APPNAME+" CRITICAL | Start command has failed for "+'("'+command+'",'+args+') with err: '+err);
 	})
 }
