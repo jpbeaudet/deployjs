@@ -1,7 +1,7 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
 // lunchjs.js
-// Version : 0.0.7
+// Version : 0.0.8
 // Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
@@ -257,20 +257,21 @@ try {
 }
 //lookup to pid and return a boolean
 function findAndKill(command,args, id, cb){
+	console.log("findAndKill : "+command+ " "+args.join(","))
 	ps.lookup({
-	command: command,
-	arguments: args.join(","),
-	}, function(err, resultList ) {
-	if (err) {
-		throw new Error( err );
-	}
+    command: command+args.join(","),
+    arguments: "",
+    }, function(err, resultList ) {
+    if (err) {
+        throw new Error( err );
+    }
  
-	resultList.forEach(function( process ){
-		if( process ){
-			//lookup(process.pid, id)
-			console.log( 'KILLING: PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
-			kill(process.pid,'SIGKILL',function(){
-				
+    resultList.forEach(function( process ){
+        if( process ){
+            //lookup(process.pid, id)
+            console.log( 'KILLING: PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
+            kill(process.pid,'SIGKILL',function(){
+				//console.log( 'KILLED: PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
 			
 			})
         }
@@ -297,7 +298,9 @@ function lookup(pid, id){
 			if(VERBOSE){
 				console.log(APPNAME+' IMPORTANT | No such process found! PID: '+pid+' starting bootstrap... ');
 			}
-			return bootstrap(id)
+			setTimeout(function(){ 
+				return bootstrap(id)
+			}, 200);
 		}
 });
 }
@@ -427,13 +430,14 @@ try {
 		var logStream = fs.createWriteStream(path.join(obj.root, obj.process[id].cwd, obj.process[id].stderr), {flags: 'a'});
 		cmd.stderr.pipe(logStream);
 	}
-	cmd.stdout.on('keypress', function (ch, key) {
-		console.log('got "keypress"', key);
-		if (key && key.ctrl && key.name == 'c') {
-			console.log("ping!!!!!")
-			process.exit();
-		}
-	});
+
+cmd.stdout.on('keypress', function (ch, key) {
+	console.log('got "keypress"', key);
+	if (key && key.ctrl && key.name == 'c') {
+		console.log("ping!!!!!")
+		process.exit();
+	}
+});
 	cmd.stdout.on('data', (data) => {
 		if(VERBOSE){
 			console.log(APPNAME+" IMPORTANT | process for "+cmd+" is PID: "+cmd.pid)
@@ -459,6 +463,7 @@ try {
 
 	cmd.on("exit",function(){
 		findAndKill(command, args, id, function(){
+			
 			//kill(cmd.pid,'SIGKILL',function(code, signal){
 				if(VERBOSE){
 					console.log(APPNAME+" IMPORTANT | SPAWN  exit() "+cmd.pid +" exited with Ctrl-C" );
@@ -480,6 +485,7 @@ try {
 				throw new MyError(err.message);
 			}
 			findAndKill(command, args, id, function(){
+				
 			//kill(cmd.pid,'SIGKILL',function(){
 				if(VERBOSE){
 					console.log(APPNAME+" IMPORTANT | SPAWN "+cmd.pid +" exited with code: "+ code);
@@ -489,6 +495,7 @@ try {
 	});
 }catch(err) {
 	findAndKill(command,args, id, function(){
+		
 	//kill(obj.process[id].pid ,'SIGKILL',function(){
 		throw new MyError(APPNAME+" CRITICAL | Start command has failed for "+'("'+command+'",'+args+') with err: '+err);
 	})

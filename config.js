@@ -1,7 +1,7 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
 // config.js
-// Version : 0.0.7
+// Version : 0.0.8
 // Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
