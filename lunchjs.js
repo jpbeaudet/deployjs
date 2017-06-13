@@ -1,7 +1,7 @@
 // Author: Jean-Philippe Beaudet @ S3R3NITY Technology 
 //
 // lunchjs.js
-// Version : 0.0.6
+// Version : 0.0.7
 // Open-source GPL-3.0
 //
 // Command line tool to handle deployment, server restart and dependencies
@@ -258,7 +258,7 @@ try {
 //lookup to pid and return a boolean
 function findAndKill(command,args, id, cb){
 	ps.lookup({
-	command: comamnds,
+	command: command,
 	arguments: args.join(","),
 	}, function(err, resultList ) {
 	if (err) {
